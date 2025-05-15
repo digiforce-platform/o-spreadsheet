@@ -2,9 +2,6 @@ import { nodeResolve } from "@rollup/plugin-node-resolve";
 import terser from "@rollup/plugin-terser";
 import dts from "rollup-plugin-dts";
 import typescript from "rollup-plugin-typescript2";
-import { bundle } from "./tools/bundle.cjs";
-
-const outro = bundle.outro();
 
 /**
  * Get the rollup config based on the arguments
@@ -14,13 +11,11 @@ const outro = bundle.outro();
  */
 function getConfigForFormat(format, minified = false) {
   return {
-    file: minified ? `dist/o-spreadsheet.${format}.min.js` : `dist/o-spreadsheet.${format}.js`,
+    file: `dist/index.js`,
     format,
     name: "o_spreadsheet",
     extend: true,
     globals: { "@odoo/owl": "owl" },
-    outro,
-    banner: bundle.jsBanner(),
     plugins: minified ? [terser()] : [],
   };
 }
@@ -38,16 +33,14 @@ export default (commandLineArgs) => {
       {
         name: "o_spreadsheet",
         extend: true,
-        outro,
-        banner: bundle.jsBanner(),
         globals: { "@odoo/owl": "owl" },
       },
     ];
     if (commandLineArgs.configDev) {
-      output[0].file = `build/o_spreadsheet.dev.js`;
+      output[0].file = `build/index.js`;
       output[0].format = `iife`;
     } else {
-      output[0].file = `build/o_spreadsheet.js`;
+      output[0].file = `build/index.js`;
       output[0].format = `esm`;
     }
     config = {
@@ -58,13 +51,8 @@ export default (commandLineArgs) => {
     };
   } else {
     input = "src/index.ts";
-    output = [
-      getConfigForFormat("esm"),
-      getConfigForFormat("cjs"),
-      getConfigForFormat("iife"),
-      getConfigForFormat("iife", true),
-    ];
-    plugins.push(typescript({ useTsconfigDeclarationDir: true }));
+    output = [getConfigForFormat("esm")];
+    plugins.push(typescript({ useTsconfigDeclarationDir: false }));
     config = [
       {
         input,
@@ -74,7 +62,7 @@ export default (commandLineArgs) => {
       },
       {
         input: "dist/types/index.d.ts",
-        output: [{ file: "dist/o-spreadsheet.d.ts", format: "es" }],
+        output: [{ file: "dist/index.d.ts", format: "es" }],
         plugins: [dts(), nodeResolve()],
       },
     ];

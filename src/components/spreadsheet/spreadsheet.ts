@@ -81,7 +81,7 @@ css/* scss */ `
     position: relative;
     display: grid;
     color: ${TEXT_BODY};
-    font-size: 14px;
+    font-size: 13px;
 
     input {
       background-color: white;
@@ -253,9 +253,9 @@ css/* scss */ `
   .o-button {
     border: 1px solid;
     border-radius: 4px;
-    font-weight: 500;
-    font-size: 14px;
-    height: 30px;
+    font-weight: 400;
+    font-size: 13px;
+    height: 24px;
     line-height: 16px;
     flex-grow: 1;
     background-color: ${BUTTON_BG};
@@ -308,7 +308,7 @@ css/* scss */ `
     cursor: pointer;
     text-decoration: none;
     color: ${ACTION_COLOR};
-    font-weight: 500;
+    font-weight: 400;
     &:hover,
     &:active {
       color: ${ACTION_COLOR_HOVER};
@@ -318,7 +318,7 @@ css/* scss */ `
   .o-button-icon {
     cursor: pointer;
     color: ${TEXT_BODY_MUTED};
-    font-weight: 500;
+    font-weight: 400;
     &:hover,
     &:active {
       color: ${TEXT_BODY};
