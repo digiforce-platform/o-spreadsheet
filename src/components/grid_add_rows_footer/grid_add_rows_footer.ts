@@ -9,7 +9,7 @@ css/* scss */ `
     input.o-input {
       box-sizing: border-box;
       width: 60px;
-      height: 30px;
+      height: 26px;
     }
 
     .o-validation-error {

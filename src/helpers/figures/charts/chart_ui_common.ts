@@ -1,5 +1,5 @@
 import type { BasePlatform, ChartConfiguration, ChartOptions, ChartType } from "chart.js";
-import { LegendOptions } from "chart.js";
+import { Chart as ChartJS, LegendOptions } from "chart.js/auto";
 import { DeepPartial } from "chart.js/dist/types/utils";
 import { chartShowValuesPlugin } from "../../../components/figures/chart/chartJs/chartjs_show_values_plugin";
 import { waterfallLinesPlugin } from "../../../components/figures/chart/chartJs/chartjs_waterfall_plugin";
@@ -400,9 +400,10 @@ export function getChartJsLegend(
 
 /** Return window.Chart, making sure all our extensions are loaded in ChartJS */
 export function getChartJSConstructor() {
-  if (window.Chart && !window.Chart?.registry.plugins.get("chartShowValuesPlugin")) {
-    window.Chart.register(chartShowValuesPlugin);
-    window.Chart.register(waterfallLinesPlugin);
+  const C = window.Chart || ChartJS;
+  if (C && !C?.registry.plugins.get("chartShowValuesPlugin")) {
+    C.register(chartShowValuesPlugin);
+    C.register(waterfallLinesPlugin);
   }
-  return window.Chart;
+  return C;
 }

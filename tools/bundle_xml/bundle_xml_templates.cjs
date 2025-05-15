@@ -50,15 +50,15 @@ function createOwlTemplateBundle(files, removeRootTags) {
       const message = `owl="1" is no longer required in xml templates. Please remove it from ${file}`;
       throw new Error(message);
     }
-    return xml;
+    return xml.replace(/>\n(\s*\n)*\s*</g, "><").replace(/\n(\s*\n)*\s*/g, " ");
   });
-  let xml = xmls.join("\n");
+  let xml = xmls.join("");
   // individual xml files need a root tag but we can remove them in the bundle
   if (removeRootTags) {
     xml = xml.replace(/<templates>/g, "");
     xml = xml.replace(/<\/templates>/g, "");
   }
-  return "<odoo>\n" + xml + "</odoo>";
+  return "<root>" + xml + "</root>";
 }
 
 /**
@@ -68,10 +68,11 @@ async function writeOwlTemplateBundleToFile(dir, banner = "") {
   process.stdout.write(`Building xml template bundle in "${dir}/" ...`);
   let templateBundle = await getOwlTemplatesBundle(true);
   if (banner) {
-    templateBundle = banner + "\n" + templateBundle;
+    templateBundle = templateBundle;
   }
-  templateBundle = prettify(templateBundle);
-  writeToFile(path.join(__dirname, `../../${dir}/o_spreadsheet.xml`), templateBundle);
+  const templateBundleExportTs = `const templates = \`${templateBundle}\`;\nexport default templates;`;
+  writeToFile(path.join(__dirname, `../../${dir}/templates.xml`), templateBundle);
+  writeToFile(path.join(__dirname, `../../${dir}/templates.ts`), templateBundleExportTs);
   process.stdout.write("done\n");
 }
 

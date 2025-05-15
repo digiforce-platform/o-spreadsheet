@@ -18,7 +18,7 @@ interface ClosedSidePanel {
 
 export type SidePanelState = OpenSidePanel | ClosedSidePanel;
 
-export const DEFAULT_SIDE_PANEL_SIZE = 350;
+export const DEFAULT_SIDE_PANEL_SIZE = 300;
 export const MIN_SHEET_VIEW_WIDTH = 150;
 
 export class SidePanelStore extends SpreadsheetStore {

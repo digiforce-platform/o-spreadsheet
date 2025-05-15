@@ -21,11 +21,11 @@ css/* scss */ `
 
     .o-sidePanelTitle {
       line-height: 20px;
-      font-size: 16px;
+      font-size: 14px;
     }
 
     .o-sidePanelHeader {
-      padding: 8px 16px;
+      padding: 6px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -49,7 +49,7 @@ css/* scss */ `
       height: 100%;
 
       .o-section {
-        padding: 16px;
+        padding: 14px;
 
         .o-section-title {
           font-weight: 500;
@@ -57,7 +57,7 @@ css/* scss */ `
         }
 
         .o-section-subtitle {
-          font-weight: 500;
+          font-weight: 400;
           font-size: 13px;
           line-height: 14px;
           margin: 8px 0 4px 0;

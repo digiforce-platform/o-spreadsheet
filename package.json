@@ -3,17 +3,19 @@
   "version": "18.0.28",
   "description": "A spreadsheet component",
   "type": "module",
-  "main": "dist/o-spreadsheet.cjs.js",
-  "browser": "dist/o-spreadsheet.iife.js",
-  "module": "dist/o-spreadsheet.esm.js",
-  "types": "dist/o-spreadsheet.d.ts",
-  "files": [
-    "dist/*.js",
-    "dist/*.d.ts",
-    "dist/*.xml"
-  ],
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./templates": {
+      "import": "./dist/templates.ts"
+    }
+  },
+  "types": "dist/index.d.ts",
   "scripts": {
-    "serve-static": "live-server --open=demo --watch=build/o_spreadsheet.dev.js,build/o_spreadsheet.xml,demo",
+    "serve-static": "live-server --open=demo --watch=build/index.js,build/templates.xml,demo",
     "dev": "npm-run-all --print-label buildDev --parallel server serve-static watch:*",
     "server": "node tools/server/main.cjs",
     "build:js": "tsc --module es6 --incremental",
@@ -28,7 +30,7 @@
     "test:watch": "jest --watch",
     "prettier": "prettier . --write",
     "check-formatting": "prettier . --check",
-    "dist": "tsc --module es6 --declaration --declarationDir dist/types && rollup -c && npm run build:bundleXml -- --outDir dist",
+    "dist": "rm -rf dist && tsc --module es6 --declaration --declarationDir dist/types && rollup -c && npm run build:bundleXml -- --outDir dist && rm -rf dist/types",
     "prepare": "husky install",
     "watch:bundle": "npm run build:bundleJsDev -- --watch",
     "watch:ts": "npm run build:js -- --watch",

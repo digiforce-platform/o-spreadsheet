@@ -17,7 +17,7 @@ export const demoData = {
       cols: {},
       merges: ["H2:I5", "K3:K8"],
       cells: {
-        A21: { content: "[Sheet2 => B2:](o-spreadsheet://sh2)" },
+        A21: { content: "[Sheet2 => B2:](sheet://sh2)" },
         A23: { content: "https://odoo.com" },
         A27: { content: "Emily Anderson (Emmy)" },
         A28: { content: "Sophie Allen (Saffi)" },
