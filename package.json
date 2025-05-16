@@ -1,6 +1,7 @@
 {
-  "name": "@odoo/o-spreadsheet",
-  "version": "18.0.28",
+  "name": "@digiforce-nc/o-spreadsheet",
+  "version": "1.0.2",
+  "o-version": "18.0.28",
   "description": "A spreadsheet component",
   "type": "module",
   "module": "dist/index.js",
@@ -13,6 +14,9 @@
       "import": "./dist/templates.ts"
     }
   },
+  "files": [
+    "dist"
+  ],
   "types": "dist/index.d.ts",
   "scripts": {
     "serve-static": "live-server --open=demo --watch=build/index.js,build/templates.xml,demo",
