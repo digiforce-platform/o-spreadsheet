@@ -19,7 +19,7 @@ function getConfigForFormat(format, minified = false) {
     name: "o_spreadsheet",
     extend: true,
     globals: { "@odoo/owl": "owl" },
-    plugins: minified ? [terser()] : [],
+    plugins: [terser()],
   };
 }
 
@@ -47,6 +47,7 @@ export default (commandLineArgs) => {
     };
   } else {
     input = "src/index.ts";
+    output = [getConfigForFormat("esm")];
     plugins.push(typescript({ useTsconfigDeclarationDir: true }));
     config = [
       {

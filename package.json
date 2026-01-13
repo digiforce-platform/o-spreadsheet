@@ -1,6 +1,6 @@
 {
-  "name": "@odoo/o-spreadsheet",
-  "version": "1.0.3",
+  "name": "@digiforce-nc/o-spreadsheet",
+  "version": "1.0.4",
   "o-version": "19.0.16",
   "description": "A spreadsheet component",
   "type": "module",
