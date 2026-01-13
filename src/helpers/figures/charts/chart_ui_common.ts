@@ -1,4 +1,5 @@
 import type { ChartConfiguration, ChartOptions } from "chart.js";
+import { Chart } from "chart.js/auto";
 import {
   areChartJSExtensionsLoaded,
   registerChartJSExtensions,
@@ -52,7 +53,7 @@ export function chartToImageUrl(
     }
     const config = deepCopy(runtime.chartJsConfig);
     config.plugins = [backgroundColorChartJSPlugin];
-    const chart = new window.Chart(canvas, config as ChartConfiguration);
+    const chart = new Chart(canvas, config as ChartConfiguration);
     imageContent = chart.toBase64Image() as string;
     chart.destroy();
     if (!extensionsLoaded) {
@@ -96,7 +97,7 @@ export async function chartToImageFile(
     }
     const config = deepCopy(runtime.chartJsConfig);
     config.plugins = [backgroundColorChartJSPlugin];
-    const chart = new window.Chart(canvas, config as ChartConfiguration);
+    const chart = new Chart(canvas, config as ChartConfiguration);
     chartBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     chart.destroy();
     if (!extensionsLoaded) {

@@ -169,7 +169,7 @@ export class ZoomableChartJsComponent extends ChartJsComponent {
     const masterChartCtx = (this.masterChartCanvas?.el as HTMLCanvasElement).getContext("2d")!;
 
     this.setMasterChartCursor(chartRuntime);
-    this.masterChart = new window.Chart(
+    this.masterChart = new Chart(
       masterChartCtx,
       this.getMasterChartConfiguration(chartRuntime["masterChartConfig"] as ChartConfiguration<any>)
     );
@@ -205,7 +205,7 @@ export class ZoomableChartJsComponent extends ChartJsComponent {
       );
       if (!this.masterChart) {
         const masterChartCtx = (this.masterChartCanvas!.el as HTMLCanvasElement).getContext("2d")!;
-        this.masterChart = new window.Chart(masterChartCtx, masterChartConfig);
+        this.masterChart = new Chart(masterChartCtx, masterChartConfig);
       } else {
         this.masterChart.data = masterChartConfig.data;
         this.masterChart.config.options = masterChartConfig.options;

@@ -1,6 +1,6 @@
 {
   "name": "@digiforce-nc/o-spreadsheet",
-  "version": "1.0.4",
+  "version": "1.0.3",
   "o-version": "19.0.16",
   "description": "A spreadsheet component",
   "type": "module",
@@ -12,6 +12,15 @@
     },
     "./templates": {
       "import": "./dist/templates.ts"
+    },
+    "./sheet.scss": {
+      "import": "./dist/sheet.scss"
+    },
+    "./sheet_variables.scss": {
+      "import": "./dist/sheet_variables.scss"
+    },
+    "./sheet.css": {
+      "import": "./dist/sheet.css"
     }
   },
   "types": "dist/index.d.ts",
@@ -19,7 +28,9 @@
     "dist/*.js",
     "dist/*.d.ts",
     "dist/*.xml",
-    "dist/*.css"
+    "dist/*.css",
+    "dist/templates.ts",
+    "dist/*.scss"
   ],
   "scripts": {
     "serve-static": "live-server --open=demo --watch=build/index.js,build/templates.xml,build/main.css,demo",

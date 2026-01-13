@@ -50,8 +50,9 @@ chartJsExtensionRegistry.add("funnelElement", {
   unregister: (Chart) => Chart.unregister(getFunnelChartElement()),
 });
 chartJsExtensionRegistry.add("funnelTooltipPositioner", {
-  register: (Chart) =>
-    (Chart.Tooltip.positioners.funnelTooltipPositioner = funnelTooltipPositioner),
+  register: (Chart, ChartJS) =>
+    // @ts-ignore
+    (ChartJS.Tooltip.positioners.funnelTooltipPositioner = funnelTooltipPositioner),
   // @ts-expect-error
   unregister: (Chart) => (Chart.Tooltip.positioners.funnelTooltipPositioner = undefined),
 });
@@ -143,7 +144,7 @@ export class ChartJsComponent extends Component<Props, SpreadsheetChildEnv> {
 
     const canvas = this.canvas.el as HTMLCanvasElement;
     const ctx = canvas.getContext("2d")!;
-    this.chart = new window.Chart(ctx, chartData);
+    this.chart = new Chart(ctx, chartData);
   }
 
   protected updateChartJs(chartRuntime: ChartJSRuntime) {

@@ -1,28 +1,29 @@
+import * as ChartJS from "chart.js";
 import { Registry } from "../../../../registries/registry";
-
+const Chart = ChartJS.Chart;
 export const chartJsExtensionRegistry = new Registry<{
-  register: (chart: typeof window.Chart) => void;
-  unregister: (chart: typeof window.Chart) => void;
+  register: (chart: typeof Chart, ChartJS) => void;
+  unregister: (chart: typeof Chart, ChartJS) => void;
 }>();
 
 export function areChartJSExtensionsLoaded() {
-  return !!window.Chart.registry.plugins.get("chartShowValuesPlugin");
+  return !!Chart.registry.plugins.get("chartShowValuesPlugin");
 }
 
 export function registerChartJSExtensions() {
-  if (!window.Chart || areChartJSExtensionsLoaded()) {
+  if (!Chart || areChartJSExtensionsLoaded()) {
     return;
   }
   for (const registryItem of chartJsExtensionRegistry.getAll()) {
-    registryItem.register(window.Chart);
+    registryItem.register(Chart, ChartJS);
   }
 }
 
 export function unregisterChartJsExtensions() {
-  if (!window.Chart) {
+  if (!Chart) {
     return;
   }
   for (const registryItem of chartJsExtensionRegistry.getAll()) {
-    registryItem.unregister(window.Chart);
+    registryItem.unregister(Chart, ChartJS);
   }
 }
