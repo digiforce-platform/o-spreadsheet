@@ -90,6 +90,26 @@ describe("Spreadsheet pivot side panel", () => {
     ]);
   });
 
+  test("single quotes are escaped for measure ids", async () => {
+    setCellContent(model, "A1", "Goa'uld");
+    setCellContent(model, "A2", "Anubis");
+    setCellContent(model, "A3", "Teal'c");
+    addPivot(model, "A1:A3", {}, "3");
+    env.openSidePanel("PivotSidePanel", { pivotId: "3" });
+    await nextTick();
+    await click(fixture.querySelectorAll(".add-dimension")[2]);
+    expect(fixture.querySelector(".o-popover")).toBeDefined();
+    await click(fixture.querySelectorAll(".o-autocomplete-value")[1]);
+    expect(fixture.querySelector(".o-popover")).toBeNull();
+    expect(model.getters.getPivotCoreDefinition("3").measures).toMatchObject([
+      {
+        id: "Goauld:count",
+        fieldName: "Goa'uld",
+        aggregator: "count",
+      },
+    ]);
+  });
+
   test("can add a calculated measure", async () => {
     setCellContent(model, "A1", "amount");
     setCellContent(model, "A2", "10");
@@ -103,7 +123,7 @@ describe("Spreadsheet pivot side panel", () => {
     expect(fixture.querySelector(".o-popover")).toBeNull();
     expect(model.getters.getPivotCoreDefinition("3").measures).toEqual([
       {
-        id: "Calculated measure 1",
+        id: "Calculated measure 1:sum",
         fieldName: "Calculated measure 1",
         aggregator: "sum",
         computedBy: {
@@ -115,7 +135,7 @@ describe("Spreadsheet pivot side panel", () => {
     await editStandaloneComposer(".pivot-dimension .o-composer", "=1+1");
     expect(model.getters.getPivotCoreDefinition("3").measures).toEqual([
       {
-        id: "Calculated measure 1",
+        id: "Calculated measure 1:sum",
         fieldName: "Calculated measure 1",
         aggregator: "sum",
         computedBy: {
@@ -139,13 +159,42 @@ describe("Spreadsheet pivot side panel", () => {
     await editStandaloneComposer(".pivot-dimension .o-composer", "1+1");
     expect(model.getters.getPivotCoreDefinition("3").measures).toEqual([
       {
-        id: "Calculated measure 1",
+        id: "Calculated measure 1:sum",
         fieldName: "Calculated measure 1",
         aggregator: "sum",
         computedBy: {
           formula: "=1+1",
           sheetId: model.getters.getActiveSheetId(),
         },
+      },
+    ]);
+  });
+
+  test("Invalid calculated measure formula have an invalid class on the composer", async () => {
+    await click(fixture.querySelectorAll(".add-dimension")[2]);
+    expect(fixture.querySelector(".o-popover")).toBeDefined();
+    await click(fixture, ".add-calculated-measure");
+    await editStandaloneComposer(".pivot-dimension .o-composer", "=abcdefg()");
+    expect(fixture.querySelector(".o-standalone-composer")).toHaveClass("o-invalid");
+  });
+
+  test("can have a computed measure without aggregate", async () => {
+    setCellContent(model, "A1", "amount");
+    setCellContent(model, "A2", "10");
+    setCellContent(model, "A3", "20");
+    addPivot(model, "A1:A3", {}, "3");
+    const sheetId = model.getters.getActiveSheetId();
+    env.openSidePanel("PivotSidePanel", { pivotId: "3" });
+    await nextTick();
+    await click(fixture.querySelectorAll(".add-dimension")[2]);
+    await click(fixture, ".add-calculated-measure");
+    await setInputValueAndTrigger(".pivot-measure select", "");
+    expect(model.getters.getPivotCoreDefinition("3").measures).toEqual([
+      {
+        id: "Calculated measure 1",
+        fieldName: "Calculated measure 1",
+        aggregator: "",
+        computedBy: { formula: "=0", sheetId },
       },
     ]);
   });
@@ -333,6 +382,20 @@ describe("Spreadsheet pivot side panel", () => {
     expect(fixture.querySelectorAll(".pivot-dimension")).toHaveLength(1);
     await click(fixture.querySelector(".fa-undo")!);
     expect(fixture.querySelectorAll(".pivot-dimension")).toHaveLength(0);
+  });
+
+  test("can add a calculated measure with defer update", async () => {
+    await click(fixture.querySelector(".pivot-defer-update input")!);
+    await click(fixture.querySelectorAll(".add-dimension")[2]);
+    await click(fixture, ".add-calculated-measure");
+
+    await editStandaloneComposer(".pivot-dimension .o-composer", "=1+");
+    await click(fixture.querySelector(".sp_apply_update")!);
+    expect(".o-standalone-composer.o-invalid").toHaveCount(1);
+
+    await editStandaloneComposer(".pivot-dimension .o-composer", "=1+1");
+    await click(fixture.querySelector(".sp_apply_update")!);
+    expect(model.getters.getPivotCoreDefinition("1").measures[0].computedBy?.formula).toBe("=1+1");
   });
 
   test("filter unsupported measures", async () => {
@@ -573,11 +636,16 @@ describe("Spreadsheet pivot side panel", () => {
   test("Invalid pivot dimensions are displayed as such in the side panel", async () => {
     setCellContent(model, "A1", "ValidDimension");
     setCellContent(model, "A2", "10");
-    addPivot(model, "A1:A2", {
-      columns: [{ fieldName: "ValidDimension" }],
-      rows: [{ fieldName: "InvalidDimension" }],
-    });
-    env.openSidePanel("PivotSidePanel", { pivotId: "1" });
+    addPivot(
+      model,
+      "A1:A2",
+      {
+        columns: [{ fieldName: "ValidDimension" }],
+        rows: [{ fieldName: "InvalidDimension" }],
+      },
+      "2"
+    );
+    env.openSidePanel("PivotSidePanel", { pivotId: "2" });
     await nextTick();
     const pivotDimensionEls = fixture.querySelectorAll<HTMLElement>(".pivot-dimension")!;
     const validDimensionEl = pivotDimensionEls[0];

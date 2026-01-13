@@ -110,6 +110,7 @@ export abstract class AbstractComposerStore extends SpreadsheetStore {
     }
     this.selectionStart = start;
     this.selectionEnd = end;
+    this.stopComposerRangeSelection();
   }
 
   stopComposerRangeSelection() {
@@ -569,6 +570,7 @@ export abstract class AbstractComposerStore extends SpreadsheetStore {
           proposals,
           selectProposal: provider.selectProposal,
           autoSelectFirstProposal: provider.autoSelectFirstProposal ?? false,
+          canBeToggled: provider.canBeToggled,
         };
       }
       if (exactMatch && this._currentContent !== this.initialContent) {
@@ -585,7 +587,7 @@ export abstract class AbstractComposerStore extends SpreadsheetStore {
           proposals,
           (p) => p.fuzzySearchKey || p.text
         );
-        if (!exactMatch || filteredProposals.length > 1) {
+        if (!exactMatch || filteredProposals.length) {
           proposals = filteredProposals;
         }
       }
@@ -597,6 +599,7 @@ export abstract class AbstractComposerStore extends SpreadsheetStore {
           proposals,
           selectProposal: provider.selectProposal,
           autoSelectFirstProposal: provider.autoSelectFirstProposal ?? false,
+          canBeToggled: provider.canBeToggled,
         };
       }
     }

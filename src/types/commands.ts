@@ -132,7 +132,6 @@ export const invalidateEvaluationCommands = new Set<CommandTypes>([
   "REDO",
   "ADD_MERGE",
   "REMOVE_MERGE",
-  "DUPLICATE_SHEET",
   "UPDATE_LOCALE",
   "ADD_PIVOT",
   "UPDATE_PIVOT",
@@ -174,6 +173,7 @@ export const invalidateBordersCommands = new Set<CommandTypes>([
   "AUTOFILL_CELL",
   "SET_BORDER",
   "SET_ZONE_BORDERS",
+  "SET_BORDERS_ON_TARGET",
 ]);
 
 export const readonlyAllowedCommands = new Set<CommandTypes>([
@@ -1225,6 +1225,7 @@ export const enum CommandResult {
   Success = "Success",
   CancelledForUnknownReason = "CancelledForUnknownReason",
   WillRemoveExistingMerge = "WillRemoveExistingMerge",
+  CannotMoveTableHeader = "CannotMoveTableHeader",
   MergeIsDestructive = "MergeIsDestructive",
   CellIsMerged = "CellIsMerged",
   InvalidTarget = "InvalidTarget",

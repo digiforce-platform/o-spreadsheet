@@ -6,7 +6,6 @@ import {
   isInside,
   isZoneInside,
   overlap,
-  positions,
   positionToZone,
   range,
   zoneToDimension,
@@ -138,7 +137,9 @@ export class TablePlugin extends CorePlugin<TableState> implements TableState {
         const ranges = cmd.ranges.map((rangeData) => this.getters.getRangeFromRangeData(rangeData));
         const union = this.getters.getRangesUnion(ranges);
         const mergesInTarget = this.getters.getMergesInZone(cmd.sheetId, union.zone);
-        this.dispatch("REMOVE_MERGE", { sheetId: cmd.sheetId, target: mergesInTarget });
+        if (mergesInTarget.length) {
+          this.dispatch("REMOVE_MERGE", { sheetId: cmd.sheetId, target: mergesInTarget });
+        }
 
         const id = this.uuidGenerator.smallUuid();
         const config = cmd.config || DEFAULT_TABLE_CONFIG;
@@ -268,17 +269,19 @@ export class TablePlugin extends CorePlugin<TableState> implements TableState {
         ? { ...zone, bottom: zone.bottom + 1, top: zone.bottom + 1 }
         : { ...zone, right: zone.right + 1, left: zone.right + 1 };
 
-    for (const position of positions(zoneToCheckIfEmpty)) {
-      const cellPosition = { sheetId, ...position };
-      // Since this plugin is loaded before CellPlugin, the getters still give us the old cell content
-      const cellContent = this.getters.getCell(cellPosition)?.content;
+    for (let row = zoneToCheckIfEmpty.top; row <= zoneToCheckIfEmpty.bottom; row++) {
+      for (let col = zoneToCheckIfEmpty.left; col <= zoneToCheckIfEmpty.right; col++) {
+        const cellPosition = { sheetId, col, row };
+        // Since this plugin is loaded before CellPlugin, the getters still give us the old cell content
+        const cellContent = this.getters.getCell(cellPosition)?.content;
 
-      if (
-        cellContent ||
-        this.getters.isInMerge(cellPosition) ||
-        this.getTablesOverlappingZones(sheetId, [positionToZone(position)]).length
-      ) {
-        return "none";
+        if (
+          cellContent ||
+          this.getters.isInMerge(cellPosition) ||
+          this.getTablesOverlappingZones(sheetId, [positionToZone(cellPosition)]).length
+        ) {
+          return "none";
+        }
       }
     }
     return direction;

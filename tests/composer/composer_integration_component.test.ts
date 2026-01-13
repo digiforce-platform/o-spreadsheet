@@ -1,4 +1,4 @@
-import { Model } from "../../src";
+import { HeaderIndex, Model } from "../../src";
 import { CellComposerStore } from "../../src/components/composer/composer/cell_composer_store";
 import {
   DEFAULT_CELL_HEIGHT,
@@ -24,13 +24,16 @@ import {
   setCellContent,
   setSelection,
   setStyle,
+  updateLocale,
 } from "../test_helpers/commands_helpers";
+import { FR_LOCALE } from "../test_helpers/constants";
 import {
   click,
   clickCell,
   getElComputedStyle,
   gridMouseEvent,
   keyDown,
+  keyUp,
   rightClickCell,
   selectColumnByClicking,
   simulateClick,
@@ -363,6 +366,15 @@ describe("Composer interactions", () => {
     expect(composerStore.editionMode).toBe("inactive");
   });
 
+  test("should switch topbar composer from editing to inactive when pressing Escape on cell A1 containing '=A2'", async () => {
+    setCellContent(model, "A1", "=A2");
+    await click(fixture, ".o-spreadsheet-topbar .o-composer");
+    expect(composerStore.editionMode).toBe("editing");
+    keyDown({ key: "Escape" });
+    keyUp({ key: "Escape" });
+    expect(composerStore.editionMode).toBe("inactive");
+  });
+
   test("ArrowKeys will move to neighbour cell, if not in contentFocus mode (left/right)", async () => {
     let composerEl: Element;
     composerEl = await startComposition("a");
@@ -674,6 +686,22 @@ describe("Grid composer", () => {
       expect(getElComputedStyle(composerContainerSelector, "left")).toBe(expectedLeft + "px");
     });
 
+    test("Grid Composer Position is recomputed if we change the edited cell", async () => {
+      const expectedTop = (index: HeaderIndex) => HEADER_HEIGHT + index * DEFAULT_CELL_HEIGHT;
+      const expectedLeft = (index: HeaderIndex) => HEADER_WIDTH + index * DEFAULT_CELL_WIDTH - 1; //-1 to include cell border
+      env.model.selection.selectCell(2, 4);
+      await typeInComposerGrid("coucou", true);
+      expect(getElComputedStyle(composerContainerSelector, "top")).toBe(expectedTop(4) + "px");
+      expect(getElComputedStyle(composerContainerSelector, "left")).toBe(expectedLeft(2) + "px");
+
+      env.model.selection.getBackToDefault();
+      env.model.selection.selectCell(1, 1);
+      env.startCellEdition();
+      await nextTick();
+      expect(getElComputedStyle(composerContainerSelector, "top")).toBe(expectedTop(1) + "px");
+      expect(getElComputedStyle(composerContainerSelector, "left")).toBe(expectedLeft(1) + "px");
+    });
+
     test("Grid composer container have a min-height / min-width to have the same size as the edited cell ", async () => {
       resizeRows(model, [0], 40);
       resizeColumns(model, ["A"], 50);
@@ -845,6 +873,25 @@ describe("TopBar composer", () => {
     await keyDown({ key: "Enter" });
     expect(topBarComposer!.textContent).toBe("");
     expect(topBarComposer.attributes.getNamedItem("placeholder")?.value).toEqual("=MUNIT(3)");
+  });
+
+  test("Spreaded cell placeholder follows the current locale", async () => {
+    ({ model, fixture } = await mountSpreadsheet());
+    setCellContent(model, "A1", "=SEQUENCE(3,3)");
+    selectCell(model, "A2");
+    updateLocale(model, FR_LOCALE);
+    await nextTick();
+
+    const topBarComposer = document.querySelector(".o-spreadsheet-topbar .o-composer")!;
+    expect(topBarComposer.textContent).toBe("");
+    expect(topBarComposer.attributes.getNamedItem("placeholder")?.value).toEqual("=SEQUENCE(3;3)");
+
+    await simulateClick(topBarComposer);
+    expect(topBarComposer!.textContent).toBe("");
+
+    await keyDown({ key: "Enter" });
+    expect(topBarComposer!.textContent).toBe("");
+    expect(topBarComposer.attributes.getNamedItem("placeholder")?.value).toEqual("=SEQUENCE(3;3)");
   });
 
   test("opening and closing the assistant preserves the focus on the top bar composer", async () => {

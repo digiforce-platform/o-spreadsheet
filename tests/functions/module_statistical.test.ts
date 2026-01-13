@@ -1,4 +1,6 @@
 import { toXC } from "../../src/helpers";
+import { ErrorCell } from "../../src/types";
+import { setCellContent } from "../test_helpers/commands_helpers";
 import { getEvaluatedCell } from "../test_helpers/getters_helpers";
 import {
   createModelFromGrid,
@@ -436,7 +438,7 @@ describe("AVERAGEA formula", () => {
     // prettier-ignore
     const grid = {
         A1: "40", B1: "42",
-        A2: "41", B2: "=KABOUM", 
+        A2: "41", B2: "=KABOUM",
       };
     expect(evaluateCell("A3", { A3: "=AVERAGEA(A1:A2, B1:B2)", ...grid })).toBe("#BAD_EXPR");
   });
@@ -486,8 +488,8 @@ describe("AVERAGEIF formula", () => {
     // prettier-ignore
     const grid = {
       A1: "=KABOUM", B1: "42",
-      A2: "41",      B2: "43", 
-      A3: "44",      B3: "45", 
+      A2: "41",      B2: "43",
+      A3: "44",      B3: "45",
     };
     expect(evaluateCell("A4", { A4: "=AVERAGEIF(A1:A3, KABOUM, B1:B3)", ...grid })).toBe(
       "#BAD_EXPR"
@@ -540,8 +542,8 @@ describe("AVERAGEIFS formula", () => {
     // prettier-ignore
     const grid = {
       A1: "=KABOUM", B1: "42",
-      A2: "41",      B2: "43", 
-      A3: "44",      B3: "45", 
+      A2: "41",      B2: "43",
+      A3: "44",      B3: "45",
     };
     expect(evaluateCell("A4", { A4: "=AVERAGEIFS(B1:B3, A1:A3, KABOUM)", ...grid })).toBe(
       "#BAD_EXPR"
@@ -618,7 +620,7 @@ describe("COUNT formula", () => {
     // prettier-ignore
     const grid = {
         A1: "=KABOUM", B1: "42",
-        A2: "42",      B2: "=1/0", 
+        A2: "42",      B2: "=1/0",
       };
     expect(evaluateCell("A3", { A3: "=COUNT(A1:B2)", ...grid })).toBe(2);
   });
@@ -692,7 +694,7 @@ describe("COUNTA formula", () => {
     // prettier-ignore
     const grid = {
       A1: "=KABOUM", B1: "42",
-      A2: "42",      B2: "=1/0", 
+      A2: "42",      B2: "=1/0",
     };
     expect(evaluateCell("A3", { A3: "=COUNTA(A1:B2)", ...grid })).toBe(4);
   });
@@ -735,8 +737,8 @@ describe("COVAR formula", () => {
     // prettier-ignore
     const grid = {
       A1: "=KABOUM", B1: "42",
-      A2: "42",      B2: "1", 
-      A3: "44",      B3: "2", 
+      A2: "42",      B2: "1",
+      A3: "44",      B3: "2",
     };
     expect(evaluateCell("A4", { A4: "=COVAR(A1:A3, B1:B3)", ...grid })).toBe("#BAD_EXPR");
   });
@@ -779,8 +781,8 @@ describe("COVARIANCE.P formula", () => {
     // prettier-ignore
     const grid = {
       A1: "=KABOUM", B1: "42",
-      A2: "42",      B2: "1", 
-      A3: "44",      B3: "2", 
+      A2: "42",      B2: "1",
+      A3: "44",      B3: "2",
     };
     expect(evaluateCell("A4", { A4: "=COVARIANCE.P(A1:A3, B1:B3)", ...grid })).toBe("#BAD_EXPR");
   });
@@ -3185,6 +3187,23 @@ describe("MATTHEWS formula", () => {
 });
 
 describe("SLOPE formula", () => {
+  test("Slope with an empty matrix for the y values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=SLOPE(B2:B3, C2:C3)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "SLOPE has no valid input data."
+    );
+  });
+
+  test("Slope with an empty matrix for the x values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=SLOPE(C2:C3, B2:B3)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "SLOPE has no valid input data."
+    );
+  });
   test("Unrelated values", () => {
     //prettier-ignore
     const grid = {
@@ -3246,6 +3265,23 @@ describe("SLOPE formula", () => {
 });
 
 describe("INTERCEPT formula", () => {
+  test("Intercept with an empty matrix for the y values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=INTERCEPT(B2:B3, C2:C3)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "INTERCEPT has no valid input data."
+    );
+  });
+
+  test("Intercept with an empty matrix for the x values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=INTERCEPT(C2:C3, B2:B3)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "INTERCEPT has no valid input data."
+    );
+  });
   test("Unrelated values", () => {
     //prettier-ignore
     const grid = {
@@ -3307,6 +3343,24 @@ describe("INTERCEPT formula", () => {
 });
 
 describe("FORECAST formula", () => {
+  test("Forecast with an empty matrix for the y values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=FORECAST(1, B2:B3, C2:C3)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "FORECAST has no valid input data."
+    );
+  });
+
+  test("Forecast with an empty matrix for the x values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=FORECAST(1, C2:C3, B2:B3)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "FORECAST has no valid input data."
+    );
+  });
+
   test("Correctly predicts a single value", () => {
     //prettier-ignore
     const grid = {
@@ -3434,6 +3488,23 @@ describe("STEYX formula", () => {
 });
 
 describe("POLYFIT.COEFFS formula", () => {
+  test("Empty matrix for the y values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=POLYFIT.COEFFS(B2:B3, C2:C3, 2)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "POLYFIT.COEFFS has no valid input data."
+    );
+  });
+
+  test("Empty matrix for the x values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=POLYFIT.COEFFS(C2:C3, B2:B3, 2)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "POLYFIT.COEFFS has no valid input data."
+    );
+  });
   test("Noisy values", () => {
     //prettier-ignore
     const grid = {
@@ -3508,6 +3579,24 @@ describe("POLYFIT.COEFFS formula", () => {
 });
 
 describe("POLYFIT.FORECAST formula", () => {
+  test("Empty matrix for the y values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=POLYFIT.FORECAST(1, B2:B3, C2:C3, 2)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "POLYFIT.FORECAST has no valid input data."
+    );
+  });
+
+  test("Empty matrix for the x values", () => {
+    const model = createModelFromGrid({ B2: "", B3: "", C2: "1", C3: "2" });
+    setCellContent(model, "A1", "=POLYFIT.FORECAST(1, C2:C3, B2:B3, 2)");
+    expect(getEvaluatedCell(model, "A1").value).toBe("#N/A");
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "POLYFIT.FORECAST has no valid input data."
+    );
+  });
+
   test.each(["1", "2", "3", "4"])("degree %s polynomial data", async (degree: string) => {
     const order = parseInt(degree);
     //prettier-ignore
@@ -3793,6 +3882,13 @@ describe("LINEST formula", () => {
     };
     const model = createModelFromGrid(grid);
     expect(getEvaluatedCell(model, "A10").value).toBe("#ERROR");
+  });
+
+  test("Error message with empty values is correct", () => {
+    const model = createModelFromGrid({ A1: "=LINEST(C1:C2)" });
+    expect((getEvaluatedCell(model, "A1") as ErrorCell).message).toBe(
+      "Function LINEST expects number values for data_y, but got an empty value."
+    );
   });
 });
 

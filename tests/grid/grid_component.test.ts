@@ -1,6 +1,7 @@
 import { Spreadsheet, TransportService } from "../../src";
 import { CellComposerStore } from "../../src/components/composer/composer/cell_composer_store";
 import { ComposerFocusStore } from "../../src/components/composer/composer_focus_store";
+import { resetTimeoutDuration } from "../../src/components/helpers/touch_scroll_hook";
 import { PaintFormatStore } from "../../src/components/paint_format_button/paint_format_store";
 import { CellPopoverStore } from "../../src/components/popover";
 import {
@@ -177,6 +178,7 @@ describe("Grid component", () => {
     expect(getVerticalScroll()).toBe(0);
     triggerTouchEvent(grid, "touchstart", { clientX: 150, clientY: 150, identifier: 1 });
     triggerTouchEvent(grid, "touchmove", { clientX: 100, clientY: 120, identifier: 2 });
+    jest.advanceTimersByTime(10);
     await nextTick();
     expect(getHorizontalScroll()).toBe(50);
     expect(getVerticalScroll()).toBe(30);
@@ -185,6 +187,7 @@ describe("Grid component", () => {
     expect(getHorizontalScroll()).toBe(70);
     expect(getVerticalScroll()).toBe(50);
   });
+
   test("Event is stopped if not at the top", async () => {
     const grid = fixture.querySelector(".o-grid-overlay")!;
     expect(getHorizontalScroll()).toBe(0);
@@ -197,12 +200,53 @@ describe("Grid component", () => {
     // move down; we are at the top: ev not prevented
     triggerTouchEvent(grid, "touchmove", { clientX: 0, clientY: 120, identifier: 2 });
     expect(mockCallback).toBeCalledTimes(1);
+    jest.advanceTimersByTime(10);
     // move up:; we are not at the top: ev prevented
     triggerTouchEvent(grid, "touchmove", { clientX: 0, clientY: 150, identifier: 3 });
     expect(mockCallback).toBeCalledTimes(1);
     // move up again but we are at the stop: ev not prevented
     triggerTouchEvent(grid, "touchmove", { clientX: 0, clientY: 150, identifier: 4 });
     expect(mockCallback).toBeCalledTimes(2);
+  });
+
+  test("Touch has an inertial scroll", async () => {
+    const timeDelta = 100;
+    const grid = fixture.querySelector(".o-grid-overlay")!;
+    triggerTouchEvent(grid, "touchstart", { clientX: 0, clientY: 150 });
+    triggerTouchEvent(grid, "touchmove", { clientX: 0, clientY: 150 });
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBe(0);
+    jest.advanceTimersByTime(timeDelta);
+    triggerTouchEvent(grid, "touchmove", { clientX: 0, clientY: 120 });
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBe(30);
+    triggerTouchEvent(grid, "touchend", { clientX: 0, clientY: 120 });
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBe(30);
+    jest.advanceTimersByTime(timeDelta);
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBeGreaterThan(30);
+    let previousScrollY = model.getters.getActiveSheetDOMScrollInfo().scrollY;
+    jest.advanceTimersByTime(timeDelta);
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBeGreaterThan(previousScrollY);
+    previousScrollY = model.getters.getActiveSheetDOMScrollInfo().scrollY;
+    jest.advanceTimersByTime(timeDelta);
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBeGreaterThan(previousScrollY);
+    previousScrollY = model.getters.getActiveSheetDOMScrollInfo().scrollY;
+    jest.advanceTimersByTime(timeDelta);
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBeGreaterThan(previousScrollY);
+  });
+
+  test("scroll inertia is reset after some time", async () => {
+    const timeDelta = 100;
+    const grid = fixture.querySelector(".o-grid-overlay")!;
+    triggerTouchEvent(grid, "touchstart", { clientX: 0, clientY: 150 });
+    triggerTouchEvent(grid, "touchmove", { clientX: 0, clientY: 150 });
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBe(0);
+    jest.advanceTimersByTime(timeDelta);
+    triggerTouchEvent(grid, "touchmove", { clientX: 0, clientY: 120 });
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBe(30);
+    jest.advanceTimersByTime(resetTimeoutDuration + 1);
+    triggerTouchEvent(grid, "touchend", { clientX: 0, clientY: 120 });
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBe(30);
+    jest.runOnlyPendingTimers();
+    expect(model.getters.getActiveSheetDOMScrollInfo().scrollY).toBe(30);
   });
 
   describe("keybindings", () => {
@@ -904,6 +948,23 @@ describe("Grid component", () => {
       gridMouseEvent(model, "pointerup", "C8");
 
       expect(model.getters.getConditionalFormats(sheetId)[0].ranges).toEqual(["A1", "C8"]);
+    });
+
+    test("Pasting format from merged cells applies merge and updates selection", () => {
+      const sheetId = model.getters.getActiveSheetId();
+      merge(model, "B1:B3");
+      setSelection(model, ["B1:B3"]);
+
+      expect(model.getters.getMerges(sheetId)).toMatchObject([toZone("B1:B3")]);
+      expect(model.getters.getSelectedZones()).toMatchObject([toZone("B1:B3")]);
+
+      paintFormatStore.activate({ persistent: false });
+
+      gridMouseEvent(model, "pointerdown", "A1");
+      gridMouseEvent(model, "pointerup", "A1");
+
+      expect(model.getters.getSelectedZones()).toMatchObject([toZone("A1:A3")]);
+      expect(model.getters.getMerges(sheetId)).toMatchObject([toZone("B1:B3"), toZone("A1:A3")]);
     });
 
     test("can keep the paint format mode persistently", async () => {

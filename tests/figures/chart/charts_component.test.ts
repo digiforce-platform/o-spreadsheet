@@ -1,5 +1,6 @@
 import { CommandResult, Model, Spreadsheet } from "../../../src";
 import { ChartPanel } from "../../../src/components/side_panel/chart/main_chart_panel/main_chart_panel";
+import { SidePanelStore } from "../../../src/components/side_panel/side_panel/side_panel_store";
 import { ChartTerms } from "../../../src/components/translations_terms";
 import { BACKGROUND_CHART_COLOR } from "../../../src/constants";
 import { toHex, toZone } from "../../../src/helpers";
@@ -11,7 +12,11 @@ import {
   ChartWithAxisDefinition,
   SpreadsheetChildEnv,
 } from "../../../src/types";
-import { PieChartRuntime } from "../../../src/types/chart";
+import {
+  GaugeChartDefinition,
+  PieChartRuntime,
+  ScorecardChartDefinition,
+} from "../../../src/types/chart";
 import { BarChartDefinition, BarChartRuntime } from "../../../src/types/chart/bar_chart";
 import { LineChartDefinition } from "../../../src/types/chart/line_chart";
 import {
@@ -1345,6 +1350,29 @@ describe("charts", () => {
     ]);
   });
 
+  test("Deleting the second chart after selecting it closes the side panel", async () => {
+    createTestChart("basicChart", chartId);
+    createTestChart("basicChart", "secondChartId");
+    await mountSpreadsheet();
+    await openChartConfigSidePanel(model, env, chartId);
+    const store = env.getStore(SidePanelStore);
+    const sheetId = model.getters.getActiveSheetId();
+
+    const figures = model.getters.getFigures(sheetId);
+    expect(store.panelProps.figureId).toBe(figures[0].id);
+    expect(fixture.querySelector(".o-sidePanel")).not.toBeNull();
+
+    model.dispatch("SELECT_FIGURE", { id: figures[1].id });
+    await nextTick();
+    expect(store.panelProps.figureId).toBe(figures[1].id);
+    expect(fixture.querySelector(".o-sidePanel")).not.toBeNull();
+
+    model.dispatch("DELETE_FIGURE", { sheetId, id: figures[1].id });
+    await nextTick();
+    expect(store.isOpen).toBeFalsy();
+    expect(fixture.querySelector(".o-sidePanel")).toBeNull();
+  });
+
   describe("Scorecard specific tests", () => {
     test("can edit chart baseline colors", async () => {
       createTestChart("scorecard");
@@ -2154,5 +2182,33 @@ describe("Change chart type", () => {
     updateChart(model, chartId, { horizontal: false }, sheetId);
     await nextTick();
     expect(fixture.querySelector("label.o-checkbox")!.textContent).toBe("Stacked column chart");
+  });
+
+  test("Changing an empty bar chart to scorecard does not crash and leaves keyValue undefined", async () => {
+    createChart(model, { type: "bar", dataSets: [] }, chartId);
+    await mountChartSidePanel(chartId);
+
+    await changeChartType("scorecard");
+    await nextTick();
+
+    expect(fixture.querySelector(".o-chart")).toBeTruthy();
+
+    const def = model.getters.getChartDefinition(chartId) as ScorecardChartDefinition;
+    expect(def.type).toBe("scorecard");
+    expect(def.keyValue).toBeUndefined();
+  });
+
+  test("Changing an empty bar chart to gauge does not crash and leaves data range undefined", async () => {
+    createChart(model, { type: "bar", dataSets: [] }, chartId);
+    await mountChartSidePanel(chartId);
+
+    await changeChartType("gauge");
+    await nextTick();
+
+    expect(fixture.querySelector(".o-chart")).toBeTruthy();
+
+    const def = model.getters.getChartDefinition(chartId) as GaugeChartDefinition;
+    expect(def.type).toBe("gauge");
+    expect(def.dataRange).toBeUndefined();
   });
 });

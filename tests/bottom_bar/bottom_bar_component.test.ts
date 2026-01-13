@@ -28,7 +28,12 @@ import {
   triggerMouseEvent,
   triggerWheelEvent,
 } from "../test_helpers/dom_helper";
-import { makeTestEnv, mountComponentWithPortalTarget, nextTick } from "../test_helpers/helpers";
+import {
+  makeTestEnv,
+  mountComponentWithPortalTarget,
+  mountSpreadsheet,
+  nextTick,
+} from "../test_helpers/helpers";
 import { mockGetBoundingClientRect } from "../test_helpers/mock_helpers";
 
 let fixture: HTMLElement;
@@ -50,6 +55,10 @@ async function mountBottomBar(
     props: { onClick: () => {} },
   }));
   return { parent, model, env };
+}
+
+function getSheetNameSpan(): HTMLSpanElement | null {
+  return fixture.querySelector<HTMLSpanElement>(".o-sheet-name");
 }
 
 describe("BottomBar component", () => {
@@ -244,7 +253,7 @@ describe("BottomBar component", () => {
       expect(sheetName.getAttribute("contenteditable")).toEqual("false");
       await doubleClick(sheetName);
       await nextTick();
-      expect(sheetName.getAttribute("contenteditable")).toEqual("true");
+      expect(sheetName.getAttribute("contenteditable")).toEqual("plaintext-only");
       expect(document.activeElement).toEqual(sheetName);
     });
 
@@ -263,7 +272,7 @@ describe("BottomBar component", () => {
       await nextTick();
       await click(fixture, ".o-menu-item[data-name='rename'");
       const sheetName = fixture.querySelector<HTMLElement>(".o-sheet-name")!;
-      expect(sheetName.getAttribute("contenteditable")).toEqual("true");
+      expect(sheetName.getAttribute("contenteditable")).toEqual("plaintext-only");
       expect(document.activeElement).toEqual(sheetName);
     });
 
@@ -332,14 +341,13 @@ describe("BottomBar component", () => {
     test("Pasting styled content in sheet name and renaming sheet does not throw a trackback", async () => {
       const HTML = `<span style="color: rgb(242, 44, 61); background-color: rgb(0, 0, 0);">HELLO</span>`;
 
-      const sheetName = fixture.querySelector<HTMLElement>(".o-sheet-name")!;
+      const sheetName = getSheetNameSpan()!;
       triggerMouseEvent(sheetName, "dblclick");
       await nextTick();
 
       sheetName.innerHTML = HTML;
       await keyDown({ key: "Enter" });
-
-      expect(sheetName.getAttribute("contenteditable")).toEqual("false");
+      expect(getSheetNameSpan()!.getAttribute("contenteditable")).toEqual("false");
       await nextTick();
 
       expect(sheetName.innerText).toEqual("HELLO");
@@ -361,6 +369,21 @@ describe("BottomBar component", () => {
         expect(focusableElementStore.focus).toHaveBeenCalled();
       }
     );
+
+    test("Displayed sheet name is udpated on undo/redo", async () => {
+      const sheetName = getSheetNameSpan()!;
+      expect(sheetName.textContent).toEqual("Sheet1");
+      await doubleClick(sheetName);
+      sheetName.textContent = "ThisIsASheet";
+      await keyDown({ key: "Enter" });
+      expect(getSheetNameSpan()!.textContent).toEqual("ThisIsASheet");
+      undo(model);
+      await nextTick();
+      expect(getSheetNameSpan()!.textContent).toEqual("Sheet1");
+      redo(model);
+      await nextTick();
+      expect(getSheetNameSpan()!.textContent).toEqual("ThisIsASheet");
+    });
   });
 
   test("Can't rename a sheet in readonly mode", async () => {
@@ -735,6 +758,26 @@ describe("BottomBar component", () => {
     await nextTick();
     expect(fixture.querySelector(".o-selection-statistic")).toBeFalsy();
     expect(fixture.querySelector(".o-menu")).toBeFalsy();
+  });
+
+  test("Do not focus out from sheet name when renaming until clicking outside", async () => {
+    ({ fixture } = await mountSpreadsheet({
+      model: new Model({ sheets: [{ id: "sh1" }] }),
+    }));
+
+    const sheetName = fixture.querySelector<HTMLElement>(".o-sheet-name")!;
+    expect(sheetName.getAttribute("contenteditable")).toEqual("false");
+
+    await doubleClick(sheetName);
+    await nextTick();
+    expect(sheetName.getAttribute("contenteditable")).toEqual("plaintext-only");
+    expect(document.activeElement).toEqual(sheetName);
+
+    await click(sheetName);
+    expect(document.activeElement).toEqual(sheetName);
+
+    await click(fixture, ".o-spreadsheet-bottom-bar");
+    expect(document.activeElement).toEqual(fixture.querySelector(".o-grid div.o-composer"));
   });
 
   describe("drag & drop sheet", () => {

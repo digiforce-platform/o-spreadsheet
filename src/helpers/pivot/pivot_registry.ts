@@ -1,6 +1,6 @@
 import { ModelConfig } from "../../model";
 import { Registry } from "../../registries/registry";
-import { CoreGetters, Getters } from "../../types";
+import { ApplyRangeChange, CoreGetters, Getters, Range } from "../../types";
 import { PivotCoreDefinition, PivotField, PivotFields } from "../../types/pivot";
 import { Pivot } from "../../types/pivot_runtime";
 import { PivotRuntimeDefinition } from "./pivot_runtime_definition";
@@ -28,12 +28,15 @@ type PivotDefinitionConstructor = new (
 export interface PivotRegistryItem {
   ui: PivotUIConstructor;
   definition: PivotDefinitionConstructor;
-  externalData: boolean;
-  onIterationEndEvaluation: (pivot: Pivot) => void;
   dateGranularities: string[];
   datetimeGranularities: string[];
   isMeasureCandidate: (field: PivotField) => boolean;
   isGroupable: (field: PivotField) => boolean;
+  adaptRanges?: (
+    getters: CoreGetters,
+    definition: PivotCoreDefinition,
+    applyChange: ApplyRangeChange
+  ) => PivotCoreDefinition;
 }
 
 export const pivotRegistry = new Registry<PivotRegistryItem>();
@@ -52,10 +55,44 @@ const dateGranularities = [
 pivotRegistry.add("SPREADSHEET", {
   ui: SpreadsheetPivot,
   definition: SpreadsheetPivotRuntimeDefinition,
-  externalData: false,
-  onIterationEndEvaluation: (pivot: SpreadsheetPivot) => pivot.markAsDirtyForEvaluation(),
   dateGranularities: [...dateGranularities],
   datetimeGranularities: [...dateGranularities, "hour_number", "minute_number", "second_number"],
   isMeasureCandidate: (field: PivotField) => !["datetime", "boolean"].includes(field.type),
   isGroupable: () => true,
+  adaptRanges: (getters, definition, applyChange) => {
+    if (definition.type !== "SPREADSHEET" || !definition.dataSet) {
+      return definition;
+    }
+    const { sheetId, zone } = definition.dataSet;
+    const range = getters.getRangeFromZone(sheetId, zone);
+    const adaptedRange = adaptPivotRange(range, applyChange);
+
+    if (adaptedRange === range) {
+      return definition;
+    }
+
+    const dataSet = adaptedRange && {
+      sheetId: adaptedRange.sheetId,
+      zone: adaptedRange.zone,
+    };
+    return { ...definition, dataSet };
+  },
 });
+
+function adaptPivotRange(
+  range: Range | undefined,
+  applyChange: ApplyRangeChange
+): Range | undefined {
+  if (!range) {
+    return undefined;
+  }
+  const change = applyChange(range);
+  switch (change.changeType) {
+    case "NONE":
+      return range;
+    case "REMOVE":
+      return undefined;
+    default:
+      return change.range;
+  }
+}

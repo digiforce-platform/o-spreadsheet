@@ -551,11 +551,16 @@ describe("range plugin", () => {
       }
     );
 
+    test("invalid sheet name with special character", () => {
+      const range = m.getters.getRangeFromSheetXC("s1", "'Invalid Sheet Name'!A1");
+      expect(m.getters.getRangeString(range, "s1")).toBe("'Invalid Sheet Name'!A1");
+    });
+
     test.each([
       ["s1!!!A1:A9", "'s1!!'!A1:A9"],
       ["'s1!!'!A1:A9", "'s1!!'!A1:A9"],
-      ["s1!!!A1:s1!!!A9", "s1!!!A1:s1!!!A9"],
-      ["s1!!!A1:s1!!!A9", "s1!!!A1:s1!!!A9"],
+      ["s1!!!A1:s1!!!A9", "'s1!!!A1:s1!!'!A9"],
+      ["s1!!!A1:s1!!!A9", "'s1!!!A1:s1!!'!A9"],
     ])(
       "xc with more than one exclamation mark does not throw error",
       (rangeString, expectedString) => {
@@ -739,4 +744,18 @@ test.each([
   const range = model.getters.getRangeFromSheetXC(sheetId, value);
   const adaptedRange = model.getters.createAdaptedRanges([range], 1, 1, sheetId);
   expect(model.getters.getRangeString(adaptedRange[0], sheetId)).toBe(expected);
+});
+
+test("Plugins cannot dispatch a command during adaptRanges", () => {
+  class PluginDispatchInAdaptRanges extends CorePlugin {
+    adaptRanges() {
+      this.dispatch("DELETE_SHEET", { sheetId: "s1" });
+    }
+  }
+  addTestPlugin(corePluginRegistry, PluginDispatchInAdaptRanges);
+
+  const model = new Model({});
+  expect(() => {
+    addColumns(model, "before", "A", 1);
+  }).toThrowError("Plugins cannot dispatch commands during adaptRanges phase");
 });

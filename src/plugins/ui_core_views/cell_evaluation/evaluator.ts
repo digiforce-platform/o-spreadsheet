@@ -104,6 +104,10 @@ export class Evaluator {
     return Array.from(arrayFormulas).find((position) => !this.blockedArrayFormulas.has(position));
   }
 
+  isArrayFormulaSpillBlocked(position: CellPosition): boolean {
+    return this.blockedArrayFormulas.has(position);
+  }
+
   updateDependencies(position: CellPosition) {
     // removing dependencies is slow because it requires
     // to traverse the entire r-tree.
@@ -116,13 +120,8 @@ export class Evaluator {
   private addDependencies(position: CellPosition, dependencies: Range[]) {
     this.formulaDependencies().addDependencies(position, dependencies);
     for (const range of dependencies) {
-      const sheetId = range.sheetId;
-      const { left, bottom, right, top } = range.zone;
-      for (let col = left; col <= right; col++) {
-        for (let row = top; row <= bottom; row++) {
-          this.computeAndSave({ sheetId, col, row });
-        }
-      }
+      // ensure that all ranges are computed
+      this.compilationParams.ensureRange(range);
     }
   }
 
@@ -379,6 +378,10 @@ export class Evaluator {
 
     const nbColumns = formulaReturn.length;
     const nbRows = formulaReturn[0].length;
+    if (nbRows === 0) {
+      // empty matrix
+      return createEvaluatedCell({ value: 0 }, this.getters.getLocale(), cellData);
+    }
 
     const resultZone = {
       top: formulaPosition.row,
@@ -406,7 +409,8 @@ export class Evaluator {
   private invalidatePositionsDependingOnSpread(sheetId: UID, resultZone: Zone) {
     // the result matrix is split in 2 zones to exclude the array formula position
     const invalidatedPositions = this.formulaDependencies().getCellsDependingOn(
-      excludeTopLeft(resultZone).map((zone) => ({ sheetId, zone }))
+      excludeTopLeft(resultZone).map((zone) => ({ sheetId, zone })),
+      this.nextPositionsToUpdate
     );
     invalidatedPositions.delete({ sheetId, col: resultZone.left, row: resultZone.top });
     this.nextPositionsToUpdate.addMany(invalidatedPositions);
@@ -564,7 +568,7 @@ export class Evaluator {
     for (const sheetId in zonesBySheetIds) {
       ranges.push(...zonesBySheetIds[sheetId].map((zone) => ({ sheetId, zone })));
     }
-    return this.formulaDependencies().getCellsDependingOn(ranges);
+    return this.formulaDependencies().getCellsDependingOn(ranges, this.nextPositionsToUpdate);
   }
 }
 

@@ -1,7 +1,12 @@
 import { Model } from "../../src";
 import { setCellContent, setCellFormat } from "../test_helpers/commands_helpers";
 import { getEvaluatedCell } from "../test_helpers/getters_helpers";
-import { evaluateCell, evaluateCellFormat } from "../test_helpers/helpers";
+import {
+  createModelFromGrid,
+  evaluateCell,
+  evaluateCellFormat,
+  getRangeValuesAsMatrix,
+} from "../test_helpers/helpers";
 
 describe("AND formula", () => {
   test("functional tests on simple arguments", () => {
@@ -62,6 +67,7 @@ describe("IF formula", () => {
   test("functional tests on simple arguments", () => {
     expect(evaluateCell("A1", { A1: "=IF( ,  ,  )" })).toBe("");
     expect(evaluateCell("A1", { A1: "=IF( , 1, 2)" })).toBe(2);
+    expect(evaluateCell("A1", { A1: "=IF(TRUE,  , 2)" })).toBe("");
     expect(evaluateCell("A1", { A1: "=IF(FALSE , 1, 2)" })).toBe(2);
     expect(evaluateCell("A1", { A1: "=IF(TRUE , 1, 2)" })).toBe(1);
     expect(evaluateCell("A1", { A1: '=IF(TRUE , "1", 2)' })).toBe("1");
@@ -80,7 +86,6 @@ describe("IF formula", () => {
   });
 
   test("functional tests on cell arguments", () => {
-    expect(evaluateCell("A1", { A1: "=IF(A2, A3, A4)" })).toBe("");
     expect(evaluateCell("A1", { A1: "=IF(A2, A3, A4)" })).toBe("");
     expect(evaluateCell("A1", { A1: "=IF(A2, A3, A4)", A2: "TRUE", A3: "1", A4: "2" })).toBe(1);
     expect(evaluateCell("A1", { A1: "=IF(A2, A3, A4)", A2: "FALSE", A3: "1", A4: "2" })).toBe(2);
@@ -114,6 +119,40 @@ describe("IF formula", () => {
       "0%"
     );
   });
+
+  test("do not apply vectorization to arguments not surrounded by the logical expression", () => {
+    //prettier-ignore
+    const model = createModelFromGrid({
+      A1: "true",  B1: "B1", 
+      A2: "false", B2: "B2" 
+    });
+    setCellContent(model, "A3", "=IF(A1, 42, B1:B2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([[42], [null]]);
+
+    setCellContent(model, "A3", "=IF(A2, 42, B1:B2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([["B1"], ["B2"]]);
+  });
+
+  test("apply vectorization to arguments when logical expression is a matrix", () => {
+    //prettier-ignore
+    const grid = { 
+      A1: "true", B1: "false", C1: "C1", D1: "D1", E1: "E1",
+      A2: "true", B2: "true"
+    };
+    const model = createModelFromGrid(grid);
+
+    setCellContent(model, "A3", "=IF(A1:A2, 42, C1:E1)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      [42, 42, 42],
+      [42, 42, 42],
+    ]);
+
+    setCellContent(model, "A3", "=IF(B1:B2, 42, C1:E1)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      ["C1", "D1", "E1"],
+      [42, 42, 42],
+    ]);
+  });
 });
 
 describe("IFERROR formula", () => {
@@ -129,6 +168,7 @@ describe("IFERROR formula", () => {
   test("functional tests on simple arguments with errors", () => {
     expect(evaluateCell("A1", { A1: "=IFERROR(FALSE, 42/0)" })).toBe(false);
     expect(evaluateCell("A1", { A1: "=IFERROR(42/0, FALSE)" })).toBe(false);
+    expect(evaluateCell("A1", { A1: "=IFERROR(42/0, )" })).toBe("");
   });
 
   test("functional tests on cell arguments", () => {
@@ -180,6 +220,42 @@ describe("IFERROR formula", () => {
     setCellContent(model, "A3", "=IFERROR(0/0, A1)");
     expect(getEvaluatedCell(model, "A3").formattedValue).toBe("100.00%");
   });
+
+  test("do not apply vectorization to arguments not surrounded by the logical expression", () => {
+    const model = createModelFromGrid({
+      A1: "42",
+      B1: "B1",
+      A2: "=1/0",
+      B2: "B2",
+    });
+
+    setCellContent(model, "A3", "=IFERROR(A1, B1:B2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([[42], [null]]);
+
+    setCellContent(model, "A3", "=IFERROR(A2, B1:B2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([["B1"], ["B2"]]);
+  });
+
+  test("apply vectorization to arguments when logical expression is a matrix", () => {
+    //prettier-ignore
+    const grid = { 
+      A1: "42", B1: "=1/0", C1: "C1", D1: "D1", E1: "E1",
+      A2: "53", B2: "64"
+    };
+    const model = createModelFromGrid(grid);
+
+    setCellContent(model, "A3", "=IFERROR(A1:A2, C1:E1)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      [42, 42, 42],
+      [53, 53, 53],
+    ]);
+
+    setCellContent(model, "A3", "=IFERROR(B1:B2, C1:E1)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      ["C1", "D1", "E1"],
+      [64, 64, 64],
+    ]);
+  });
 });
 
 describe("IFNA formula", () => {
@@ -194,6 +270,7 @@ describe("IFNA formula", () => {
     expect(evaluateCell("A1", { A1: "=IFNA(42/0, FALSE)" })).toBe("#DIV/0!");
 
     expect(evaluateCell("A1", { A1: "=IFNA(NA(), 42)" })).toBe(42);
+    expect(evaluateCell("A1", { A1: "=IFNA(NA(), )" })).toBe("");
   });
 
   test("functional tests on cell arguments", () => {
@@ -215,6 +292,37 @@ describe("IFNA formula", () => {
       "m/d/yy"
     );
   });
+
+  test("do not apply vectorization to arguments not surrounded by the logical expression", () => {
+    const model = createModelFromGrid({ B1: "B1", B2: "B2" });
+
+    setCellContent(model, "A3", "=IFNA(42, B1:B2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([[42], [null]]);
+
+    setCellContent(model, "A3", "=IFNA(NA(), B1:B2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([["B1"], ["B2"]]);
+  });
+
+  test("apply vectorization to arguments when logical expression is a matrix", () => {
+    //prettier-ignore
+    const grid = { 
+      A1: "42", B1: "=NA()", C1: "C1", D1: "D1", E1: "E1",
+      A2: "53", B2: "64"
+    };
+    const model = createModelFromGrid(grid);
+
+    setCellContent(model, "A3", "=IFNA(A1:A2, C1:E1)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      [42, 42, 42],
+      [53, 53, 53],
+    ]);
+
+    setCellContent(model, "A3", "=IFNA(B1:B2, C1:E1)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      ["C1", "D1", "E1"],
+      [64, 64, 64],
+    ]);
+  });
 });
 
 describe("IFS formula", () => {
@@ -225,6 +333,7 @@ describe("IFS formula", () => {
     expect(evaluateCell("A1", { A1: "=IFS(TRUE, 1)" })).toBe(1);
     expect(evaluateCell("A1", { A1: '=IFS(TRUE, "1")' })).toBe("1");
     expect(evaluateCell("A1", { A1: "=IFS(TRUE, FALSE)" })).toBe(false);
+    expect(evaluateCell("A1", { A1: "=IFS(TRUE, )" })).toBe("");
   });
 
   test("functional tests on simple arguments with errors", () => {
@@ -244,6 +353,7 @@ describe("IFS formula", () => {
     expect(evaluateCell("A1", { A1: "=IFS(A2, A3)", A2: "TRUE", A3: "1" })).toBe(1);
     expect(evaluateCell("A1", { A1: "=IFS(A2, A3)", A2: "FALSE", A3: "1" })).toBe("#ERROR"); // @compatibility: on google sheets, return #N/A
     expect(evaluateCell("A1", { A1: "=IFS(A2, A3)", A2: "test", A3: "1" })).toBe("#ERROR"); // @compatibility: on google sheets, return #VALUE!
+    expect(evaluateCell("A1", { A1: "=IFS(A2, A3)", A2: "TRUE" })).toBe("");
     expect(
       evaluateCell("A1", {
         A1: "=IFS(A2, A3, A4, A5)",
@@ -321,6 +431,55 @@ describe("IFS formula", () => {
     expect(
       evaluateCellFormat("A1", { A1: "=IFS(false, A2, true, A3)", A2: "12/12/12", A3: "42%" })
     ).toBe("0%");
+  });
+
+  test("do not apply vectorization to arguments not surrounded by the logical expression", () => {
+    //prettier-ignore
+    const model = createModelFromGrid({
+      A1: "true",  B1: "true",  C1: "C1", 
+      A2: "false", B2: "false", C2: "C2",
+    });
+
+    setCellContent(model, "A3", "=IFS(A1, 42, B1, C1:C2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([[42], [null]]);
+
+    setCellContent(model, "A3", "=IFS(A1, 42, B1:B2, C1:C2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([[42], [null]]);
+
+    setCellContent(model, "A3", "=IFS(A2, 42, B1, C1:C2)");
+    expect(getRangeValuesAsMatrix(model, "A3:A4")).toEqual([["C1"], ["C2"]]);
+  });
+
+  test("apply vectorization to arguments when logical expression is a matrix", () => {
+    //prettier-ignore
+    const model = createModelFromGrid({
+      A1: "true", B1: "true",  C1: "C1",   D1: "D1",   E1: "E1",
+      A2: "true", B2: "false", C2: "true", D2: "true", E2: "true",
+    });
+
+    setCellContent(model, "A3", "=IFS(A1:A2, 42, true, C1:E1)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      [42, 42, 42],
+      [42, 42, 42],
+    ]);
+
+    setCellContent(model, "A3", "=IFS(A1:A2, 42, C1:E1, true)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      [42, 42, 42],
+      [42, 42, 42],
+    ]);
+
+    setCellContent(model, "A3", "=IFS(B1:B2, 42, true, C1:E1)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      [42, 42, 42],
+      ["C1", "D1", "E1"],
+    ]);
+
+    setCellContent(model, "A3", "=IFS(B1:B2, 42, C2:E2, 24)");
+    expect(getRangeValuesAsMatrix(model, "A3:C4")).toEqual([
+      [42, 42, 42],
+      [24, 24, 24],
+    ]);
   });
 });
 

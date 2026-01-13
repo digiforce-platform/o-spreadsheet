@@ -1,4 +1,5 @@
 import { Component } from "@odoo/owl";
+import { compile } from "../../../../../formulas";
 import { PivotRuntimeDefinition } from "../../../../../helpers/pivot/pivot_runtime_definition";
 import { createMeasureAutoComplete } from "../../../../../registries/auto_completes/pivot_dimension_auto_complete";
 import { PivotMeasure } from "../../../../../types";
@@ -80,5 +81,9 @@ export class PivotMeasureEditor extends Component<Props> {
       pivotId: this.props.pivotId,
       measure: this.props.measure,
     });
+  }
+
+  get isCalculatedMeasureInvalid(): boolean {
+    return compile(this.props.measure.computedBy?.formula ?? "").isBadExpression;
   }
 }

@@ -15,6 +15,7 @@ import {
   addColumns,
   addRows,
   createSheet,
+  createTable,
   deleteColumns,
   deleteRows,
   hideColumns,
@@ -34,14 +35,19 @@ import {
   setAnchorCorner,
   setCellContent,
   setSelection,
+  setStyle,
   setViewportOffset,
   undo,
 } from "../test_helpers/commands_helpers";
 import {
   getActivePosition,
+  getCell,
   getCellContent,
+  getCellText,
   getSelectionAnchorCellXc,
+  getTable,
 } from "../test_helpers/getters_helpers";
+import { createModelFromGrid } from "../test_helpers/helpers";
 
 let model: Model;
 const hiddenContent = { content: "hidden content to be skipped" };
@@ -92,6 +98,60 @@ describe("simple selection", () => {
     selectCell(model, "A10");
     resizeAnchorZone(model, "down");
     expect(model.getters.getSelectedZones()[0]).toEqual({ left: 0, top: 9, right: 0, bottom: 9 });
+  });
+
+  test("Can extend selection with Shift-arrow through merges horizontally", () => {
+    const model = new Model();
+    merge(model, "A1:B2");
+    merge(model, "C1:D2");
+    merge(model, "E1:F2");
+
+    selectCell(model, "A1");
+    resizeAnchorZone(model, "right");
+    resizeAnchorZone(model, "right");
+    expect(model.getters.getSelectedZone()).toEqual(toZone("A1:F2"));
+
+    selectCell(model, "B1");
+    resizeAnchorZone(model, "right");
+    resizeAnchorZone(model, "right");
+    expect(model.getters.getSelectedZone()).toEqual(toZone("A1:F2"));
+
+    selectCell(model, "E1");
+    resizeAnchorZone(model, "left");
+    resizeAnchorZone(model, "left");
+    expect(model.getters.getSelectedZone()).toEqual(toZone("A1:F2"));
+
+    selectCell(model, "F1");
+    resizeAnchorZone(model, "left");
+    resizeAnchorZone(model, "left");
+    expect(model.getters.getSelectedZone()).toEqual(toZone("A1:F2"));
+  });
+
+  test("Can extend selection with Shift-arrow through merges horizontally", () => {
+    const model = new Model();
+    merge(model, "A1:B2");
+    merge(model, "A3:B4");
+    merge(model, "A5:B6");
+
+    selectCell(model, "A1");
+    resizeAnchorZone(model, "down");
+    resizeAnchorZone(model, "down");
+    expect(model.getters.getSelectedZone()).toEqual(toZone("A1:B6"));
+
+    selectCell(model, "A2");
+    resizeAnchorZone(model, "down");
+    resizeAnchorZone(model, "down");
+    expect(model.getters.getSelectedZone()).toEqual(toZone("A1:B6"));
+
+    selectCell(model, "A5");
+    resizeAnchorZone(model, "up");
+    resizeAnchorZone(model, "up");
+    expect(model.getters.getSelectedZone()).toEqual(toZone("A1:B6"));
+
+    selectCell(model, "A6");
+    resizeAnchorZone(model, "up");
+    resizeAnchorZone(model, "up");
+    expect(model.getters.getSelectedZone()).toEqual(toZone("A1:B6"));
   });
 
   test("can expand selection with mouse", () => {
@@ -914,6 +974,19 @@ describe("move elements(s)", () => {
     expect(result).toBeCancelledBecause(CommandResult.WillRemoveExistingMerge);
   });
 
+  test("rejects moving part of a table with headers", () => {
+    createTable(model, "A1:A4", { numberOfHeaders: 2 });
+    const result = moveRows(model, 5, [1]);
+    expect(result).toBeCancelledBecause(CommandResult.CannotMoveTableHeader);
+  });
+
+  test("allows moving the whole table with headers", () => {
+    createTable(model, "A1:A2");
+    expect(getTable(model, "A1")!.range.zone).toEqual(toZone("A1:A2"));
+    moveRows(model, 9, [0, 1], "after");
+    expect(getTable(model, "A9")!.range.zone).toEqual(toZone("A9:A10"));
+  });
+
   test("Move a resized column preserves its size", () => {
     const model = new Model();
     resizeColumns(model, ["A"], 10);
@@ -942,6 +1015,57 @@ describe("move elements(s)", () => {
     expect(model.getters.getRowSize(sheetId, 0)).toEqual(10);
     expect(model.getters.getRowSize(sheetId, 1)).toEqual(DEFAULT_CELL_HEIGHT);
     expect(model.getters.getRowSize(sheetId, 2)).toEqual(20);
+  });
+
+  test("Move multiline row preserves its size", () => {
+    const model = new Model();
+    const sheetId = model.getters.getActiveSheetId();
+    setCellContent(model, "A3", "Hello\nWorld");
+    expect(model.getters.getRowSize(sheetId, 2)).toEqual(36);
+    moveRows(model, 1, [2], "before");
+    expect(model.getters.getRowSize(sheetId, 1)).toEqual(36);
+    moveRows(model, 2, [1], "before");
+    expect(model.getters.getRowSize(sheetId, 2)).toEqual(36);
+  });
+
+  test("Moving a row with wrapped text should not convert its height to fixed row size", () => {
+    const model = new Model();
+    const sheetId = model.getters.getActiveSheetId();
+    setCellContent(model, "A3", "Hello\nWorld");
+    setStyle(model, "A3", { wrapping: "wrap" });
+    moveRows(model, 1, [2], "before");
+    expect(model.getters.getUserRowSize(sheetId, 1)).toEqual(undefined);
+  });
+
+  test("Moving a resized row above does not change next row's size", () => {
+    const model = new Model();
+    const sheetId = model.getters.getActiveSheetId();
+    setCellContent(model, "A2", "Hello\nRow1");
+    resizeRows(model, [1], 50);
+    setCellContent(model, "A3", "Hello\nRow2");
+    moveRows(model, 0, [1], "before");
+    expect(model.getters.getRowSize(sheetId, 0)).toEqual(50);
+    expect(model.getters.getRowSize(sheetId, 2)).toEqual(36);
+  });
+
+  test("Moving a row above a resized row should not inherit its size", () => {
+    const model = new Model();
+    const sheetId = model.getters.getActiveSheetId();
+    setCellContent(model, "A1", "Hello\nWorld");
+    resizeRows(model, [0], 50);
+    setCellContent(model, "A2", "Hello");
+    moveRows(model, 0, [1], "before");
+    expect(model.getters.getRowSize(sheetId, 0)).toEqual(23);
+    expect(model.getters.getRowSize(sheetId, 1)).toEqual(50);
+  });
+
+  test("Preserves wrapped row height when a row is moved above it", () => {
+    const model = new Model();
+    const sheetId = model.getters.getActiveSheetId();
+    setCellContent(model, "A2", "Hello\nWorld");
+    setStyle(model, "A2", { wrapping: "wrap" });
+    moveRows(model, 1, [2], "before");
+    expect(model.getters.getRowSize(sheetId, 2)).toEqual(36);
   });
 
   test("Can move a column to the end of the sheet", () => {
@@ -996,6 +1120,110 @@ describe("move elements(s)", () => {
     moveRows(model, 3, [1]);
     expect(model.getters.getSelectedZone()).toEqual(toZone("A4:Z4"));
   });
+
+  test("Can move a row with an array formula", () => {
+    const model = new Model();
+    setCellContent(model, "A4", "=MUNIT(2)");
+    moveRows(model, 0, [3], "before");
+    expect(getCell(model, "A1")?.content).toEqual("=MUNIT(2)");
+    expect(getCellContent(model, "A1")).toEqual("1");
+    expect(getCell(model, "B1")).toEqual(undefined);
+  });
+
+  test("Moving a column with spreaded results do not copy them", () => {
+    const model = new Model();
+    setCellContent(model, "C1", "=MUNIT(2)");
+    moveColumns(model, "A", ["D"], "before");
+    expect(getCell(model, "A1")).toEqual(undefined);
+    expect(getCell(model, "D1")?.content).toEqual("=MUNIT(2)");
+  });
+
+  test("Formula are correctly updated on col move", () => {
+    const model = createModelFromGrid({
+      A1: "A Col",
+      A2: "1",
+      A3: "=A2",
+      A4: "=A2+A3",
+      B1: "B Col",
+      B4: "=A2+A3",
+      C1: "C Col",
+      C4: "2",
+      D4: "=A2+A3",
+    });
+    moveColumns(model, "C", ["A"], "after");
+
+    // A -> C
+    expect(getCellText(model, "C1", "Sheet1")).toBe("A Col");
+    expect(getCellText(model, "C2", "Sheet1")).toBe("1");
+    expect(getCellText(model, "C3", "Sheet1")).toBe("=C2");
+    expect(getCellText(model, "C4", "Sheet1")).toBe("=C2+C3");
+
+    // B -> A
+    expect(getCellText(model, "A1", "Sheet1")).toBe("B Col");
+    expect(getCellText(model, "A2", "Sheet1")).toBe("");
+    expect(getCellText(model, "A4", "Sheet1")).toBe("=C2+C3");
+
+    // C -> B
+    expect(getCellText(model, "B1", "Sheet1")).toBe("C Col");
+    expect(getCellText(model, "B4", "Sheet1")).toBe("2");
+
+    // D -> D
+    expect(getCellText(model, "D4", "Sheet1")).toBe("=C2+C3");
+  });
+
+  test("Formula are correctly updated on row move", () => {
+    const model = createModelFromGrid({
+      A1: "R1",
+      B1: "1",
+      C1: "=B1",
+      D1: "=B1+C1",
+
+      A2: "R2",
+      B2: "2",
+      C2: "=B2",
+      D2: "=B2+C2",
+
+      A3: "R3",
+      B3: "3",
+      C3: "=B3",
+      D3: "=B3+C3",
+
+      A4: "R4",
+      B4: "=B1+C1",
+      C4: "=B2+C2",
+      D4: "=B3+C3",
+    });
+    moveRows(model, 2, [0], "after");
+
+    //  1 -> 3
+    expect(getCellText(model, "A3", "Sheet1")).toBe("R1");
+    expect(getCellText(model, "B3", "Sheet1")).toBe("1");
+    expect(getCellText(model, "C3", "Sheet1")).toBe("=B3");
+    expect(getCellText(model, "D3", "Sheet1")).toBe("=B3+C3");
+
+    // 2 -> 1
+    expect(getCellText(model, "A1", "Sheet1")).toBe("R2");
+    expect(getCellText(model, "D1", "Sheet1")).toBe("=B1+C1");
+
+    // 3 -> 2
+    expect(getCellText(model, "A2", "Sheet1")).toBe("R3");
+    expect(getCellText(model, "D2", "Sheet1")).toBe("=B2+C2");
+
+    // 4 -> 4
+    expect(getCellText(model, "A4", "Sheet1")).toBe("R4");
+    expect(getCellText(model, "B4", "Sheet1")).toBe("=B3+C3");
+    expect(getCellText(model, "C4", "Sheet1")).toBe("=B1+C1");
+    expect(getCellText(model, "D4", "Sheet1")).toBe("=B2+C2");
+  });
+});
+
+test("Preserves wrapped row height when inserting a row above", () => {
+  const model = new Model();
+  const sheetId = model.getters.getActiveSheetId();
+  setCellContent(model, "A2", "Hello\nWorld");
+  setStyle(model, "A2", { wrapping: "wrap" });
+  addRows(model, "before", 1, 1);
+  expect(model.getters.getRowSize(sheetId, 2)).toEqual(36);
 });
 
 describe("Selection loop (ctrl + a)", () => {

@@ -1,11 +1,12 @@
-import { CellClipboardHandler } from "../../clipboard_handlers/cell_clipboard";
-import { SELECTION_BORDER_COLOR } from "../../constants";
+import { clipboardHandlersRegistries } from "../../clipboard_handlers";
+import { DEFAULT_CELL_WIDTH, SELECTION_BORDER_COLOR } from "../../constants";
 import { getClipboardDataPositions } from "../../helpers/clipboard/clipboard_helpers";
 import {
   clip,
   deepCopy,
   isEqual,
   positionToZone,
+  range,
   uniqueZones,
   updateSelectionOnDeletion,
   updateSelectionOnInsertion,
@@ -24,6 +25,7 @@ import {
   HeaderIndex,
   LocalCommand,
   MoveColumnsRowsCommand,
+  Pixel,
   RemoveColumnsRowsCommand,
   Selection,
   Sheet,
@@ -537,7 +539,16 @@ export class GridSelectionPlugin extends UIPlugin {
     const isBasedBefore = cmd.base < start;
     const deltaCol = isBasedBefore && isCol ? thickness : 0;
     const deltaRow = isBasedBefore && !isCol ? thickness : 0;
-
+    const toRemove = isBasedBefore ? cmd.elements.map((el) => el + thickness) : cmd.elements;
+    const originalSize = Object.fromEntries(
+      toRemove.map((element): [HeaderIndex, Pixel | null] => {
+        const size = isCol
+          ? this.getters.getColSize(cmd.sheetId, element)
+          : this.getters.getUserRowSize(cmd.sheetId, element);
+        const isDefaultCol = isCol && size === DEFAULT_CELL_WIDTH;
+        return [element, isDefaultCol || size === undefined ? null : size];
+      })
+    );
     const target = [
       {
         left: isCol ? start + deltaCol : 0,
@@ -548,11 +559,6 @@ export class GridSelectionPlugin extends UIPlugin {
     ];
 
     const sheetId = this.getActiveSheetId();
-    const handler = new CellClipboardHandler(this.getters, this.dispatch);
-    const data = handler.copy(getClipboardDataPositions(sheetId, target));
-    if (!data) {
-      return;
-    }
     const base = isBasedBefore ? cmd.base : cmd.base + 1;
     const pasteTarget = [
       {
@@ -562,21 +568,27 @@ export class GridSelectionPlugin extends UIPlugin {
         bottom: !isCol ? base + thickness - 1 : this.getters.getNumberRows(cmd.sheetId) - 1,
       },
     ];
-    handler.paste({ zones: pasteTarget, sheetId }, data, { isCutOperation: true });
+
+    for (const Handler of clipboardHandlersRegistries.cellHandlers.getAll()) {
+      const handler = new Handler(this.getters, this.dispatch);
+      const data = handler.copy(getClipboardDataPositions(sheetId, target), "shiftCells");
+      if (!data) {
+        continue;
+      }
+      handler.paste({ zones: pasteTarget, sheetId }, data, { isCutOperation: true });
+    }
 
     const selection = pasteTarget[0];
     const col = selection.left;
     const row = selection.top;
     this.setSelectionMixin({ zone: selection, cell: { col, row } }, [selection]);
 
-    const toRemove = isBasedBefore ? cmd.elements.map((el) => el + thickness) : cmd.elements;
     let currentIndex = isBasedBefore ? cmd.base : cmd.base + 1;
     for (const element of toRemove) {
-      const size = this.getters.getHeaderSize(cmd.sheetId, cmd.dimension, element);
       this.dispatch("RESIZE_COLUMNS_ROWS", {
         dimension: cmd.dimension,
         sheetId: cmd.sheetId,
-        size,
+        size: originalSize[element],
         elements: [currentIndex],
       });
       currentIndex += 1;
@@ -609,7 +621,38 @@ export class GridSelectionPlugin extends UIPlugin {
     if (headers.some((h) => h < 0 || h >= maxHeaderValue)) {
       return CommandResult.InvalidHeaderIndex;
     }
+    if (!isCol && !this.isTableRowMoveAllowed(id, cmd.elements)) {
+      return CommandResult.CannotMoveTableHeader;
+    }
     return CommandResult.Success;
+  }
+
+  private isTableRowMoveAllowed(sheetId: UID, selectedRows: HeaderIndex[]): boolean {
+    const tables = this.getters.getCoreTables(sheetId);
+    if (tables.length === 0) {
+      return true;
+    }
+
+    const selectedRowSet = new Set(selectedRows);
+    return tables.every(({ range: { zone }, config }) => {
+      const { top, bottom } = zone;
+
+      if (config.numberOfHeaders === 0) {
+        return true;
+      }
+
+      const headerRowEnd = top + config.numberOfHeaders - 1;
+
+      // Moving the table is allowed if table header rows are not part of the selection
+      // Or if the entire table (including header) is selected
+      const isHeaderSelected = selectedRows.some((row) => row >= top && row <= headerRowEnd);
+      if (!isHeaderSelected) {
+        return true;
+      }
+
+      const isWholeTableSelected = range(top, bottom + 1).every((r) => selectedRowSet.has(r));
+      return isWholeTableSelected;
+    });
   }
 
   private fallbackToVisibleSheet() {

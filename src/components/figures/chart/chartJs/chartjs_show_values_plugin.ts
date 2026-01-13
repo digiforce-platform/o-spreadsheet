@@ -1,4 +1,4 @@
-import { ChartType, Plugin } from "chart.js";
+import { ChartDataset, ChartType, Plugin } from "chart.js";
 import { computeTextWidth } from "../../../../helpers";
 import {
   TREND_LINE_XAXIS_ID,
@@ -10,7 +10,7 @@ interface ChartShowValuesPluginOptions {
   showValues: boolean;
   background?: Color;
   horizontal?: boolean;
-  callback: (value: number | string) => string;
+  callback: (value: number | string, dataset: ChartDataset, index: number) => string;
 }
 
 declare module "chart.js" {
@@ -32,6 +32,10 @@ export const chartShowValuesPlugin: Plugin = {
     }
     const ctx = chart.ctx as CanvasRenderingContext2D;
     ctx.save();
+    const { left, top, height, width } = chart.chartArea;
+    ctx.beginPath();
+    ctx.rect(left, top, width, height);
+    ctx.clip();
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -103,7 +107,8 @@ function drawLineOrBarChartValues(
 
       ctx.fillStyle = point.options.backgroundColor;
       ctx.strokeStyle = options.background || "#ffffff";
-      drawTextWithBackground(options.callback(value - 0), xPosition, yPosition, ctx);
+      const valueToDisplay = options.callback(Number(value), dataset, i);
+      drawTextWithBackground(valueToDisplay, xPosition, yPosition, ctx);
     }
   }
 }
@@ -124,7 +129,7 @@ function drawHorizontalBarChartValues(
 
     for (let i = 0; i < dataset._parsed.length; i++) {
       const value = dataset._parsed[i].x;
-      const displayValue = options.callback(value - 0);
+      const displayValue = options.callback(value, dataset, i);
       const point = dataset.data[i];
 
       const yPosition = point.y;
@@ -167,12 +172,26 @@ function drawPieChartValues(
       const midAngle = (startAngle + endAngle) / 2;
       const midRadius = (innerRadius + outerRadius) / 2;
       const x = bar.x + midRadius * Math.cos(midAngle);
-      const y = bar.y + midRadius * Math.sin(midAngle) + 7;
+      const y = bar.y + midRadius * Math.sin(midAngle);
+      const displayValue = options.callback(value, dataset, i);
+
+      const textHeight = 12; // ChartJS default
+      const textWidth = computeTextWidth(ctx, displayValue, { fontSize: textHeight }, "px");
+
+      const radius = outerRadius - innerRadius;
+      // Check if the text fits in the slice. Not perfect, but good enough heuristic.
+      if (textWidth >= radius || radius < textHeight) {
+        continue;
+      }
+      const sliceAngle = endAngle - startAngle;
+      const midWidth = 2 * midRadius * Math.tan(sliceAngle / 2);
+      if (sliceAngle < Math.PI / 2 && (textWidth >= midWidth || midWidth < textHeight)) {
+        continue;
+      }
 
       ctx.fillStyle = chartFontColor(options.background);
       ctx.strokeStyle = options.background || "#ffffff";
 
-      const displayValue = options.callback(value);
       drawTextWithBackground(displayValue, x, y, ctx);
     }
   }

@@ -30,6 +30,7 @@ import {
   copy,
   copyPasteAboveCells,
   copyPasteCellsOnLeft,
+  createDynamicTable,
   createSheet,
   createSheetWithName,
   createTable,
@@ -1282,6 +1283,22 @@ describe("clipboard", () => {
     expect(getCellContent(model, "C3")).toBe("45.10%");
   });
 
+  test("paste as value works with both no core format and empty string core format", () => {
+    const model = new Model();
+    setCellContent(model, "D4", "=DATE(2024,6,5)");
+
+    copy(model, "D4");
+    paste(model, "E4", "asValue");
+    expect(getCell(model, "E4")).toMatchObject({ content: "45448", format: "m/d/yyyy" });
+
+    setFormat(model, "D4", ""); // An empty string format is equivalent to no format
+    expect(getCellContent(model, "D4")).toBe("6/5/2024");
+
+    copy(model, "D4");
+    paste(model, "E5", "asValue");
+    expect(getCell(model, "E5")).toMatchObject({ content: "45448", format: "m/d/yyyy" });
+  });
+
   test("can copy a formula and paste as value", () => {
     const model = new Model();
     setCellContent(model, "A1", "=SUM(1+2)");
@@ -2368,6 +2385,21 @@ describe("clipboard: pasting outside of sheet", () => {
     expect(getCellContent(model, "A5")).toBe("b3");
   });
 
+  test("Can insert and delete cells inside an array formula", () => {
+    const model = createModelFromGrid({ A1: "=MUNIT(2)" });
+    createDynamicTable(model, "A1");
+
+    insertCells(model, "B1", "down");
+    expect(getCell(model, "A1")?.content).toBe("=MUNIT(2)");
+    expect(getCellContent(model, "A1")).toBe("1");
+    expect(getCell(model, "B2")).toBe(undefined);
+
+    deleteCells(model, "A2", "left");
+    expect(getCell(model, "A1")?.content).toBe("=MUNIT(2)");
+    expect(getCellContent(model, "A1")).toBe("1");
+    expect(getCell(model, "A2")).toBe(undefined);
+  });
+
   test("fill right selection with multiple columns -> copies first column and pastes in each subsequent column, ", async () => {
     const model = new Model();
     setCellContent(model, "C1", "c1");
@@ -2931,6 +2963,30 @@ describe("cross spreadsheet copy/paste", () => {
     pasteFromOSClipboard(modelB, "D2", parseOSClipboardContent(clipboardContent));
     expect(getCell(modelA, "A1")?.content).toBe(escapableString);
     expect(getCell(modelB, "D2")?.content).toBe(escapableString);
+  });
+
+  test("o-spreadsheet data from Excel clipboard is ignored", () => {
+    const modelA = new Model();
+    const modelB = new Model();
+
+    setCellContent(modelA, "A1", "oldContent");
+    copy(modelA, "A1");
+    const clipboardContent = modelA.getters.getClipboardContent();
+    const oldHTML = clipboardContent["text/html"];
+
+    let content = parseOSClipboardContent({
+      "text/html": `<html xmlns:o="urn:schemas-microsoft-com:office:office">${oldHTML}</body></html>`,
+      "text/plain": "newContent",
+    });
+    pasteFromOSClipboard(modelB, "D2", content);
+    expect(getCellContent(modelB, "D2")).toBe("newContent");
+
+    content = parseOSClipboardContent({
+      "text/html": `<html xmlns:o="urn:schemas-microsoft-com:office:office"><body>${oldHTML}<div>randomContent</div></body></html>`,
+      "text/plain": "newContent",
+    });
+    pasteFromOSClipboard(modelB, "D2", content);
+    expect(getCellContent(modelB, "D2")).toBe("newContent");
   });
 });
 

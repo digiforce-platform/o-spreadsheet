@@ -1,10 +1,12 @@
 import {
   activateSheet,
-  addColumns,
+  addRows,
   createSheet,
   deleteSheet,
+  redo,
   setCellContent,
   setFormat,
+  undo,
 } from "../test_helpers/commands_helpers";
 import { getEvaluatedCell, getEvaluatedGrid } from "../test_helpers/getters_helpers";
 import { createModelFromGrid } from "../test_helpers/helpers";
@@ -229,6 +231,121 @@ describe("Pivot calculated measure", () => {
         ["Food",        "Alice",          "Bob",            "2"],
         ["Drink",       "Alice",          "Bob",            "2"],
         ["Total",       "1",              "1",              "2"],
+      ]
+    );
+  });
+
+  test("calculated measure without (sub)totals aggregates", () => {
+    // prettier-ignore
+    const grid = {
+      A1: "Product", B1: "Price",  C1: "Margin",
+      A2: "Table",   B2: "1000",   C2: "200",
+      A3: "Chair",   B3: "100",    C3: "50",
+      A5: "=PIVOT(1)"
+    };
+    const model = createModelFromGrid(grid);
+    const sheetId = model.getters.getActiveSheetId();
+    addPivot(model, "A1:C3", {
+      columns: [],
+      rows: [{ fieldName: "Product" }],
+      measures: [
+        { id: "Price:sum", fieldName: "Price", aggregator: "sum" },
+        { id: "Margin:sum", fieldName: "Margin", aggregator: "sum" },
+        {
+          id: "percent_margin",
+          fieldName: "% Margin",
+          aggregator: "",
+          computedBy: { formula: "='Margin:sum'/'Price:sum'", sheetId },
+          format: "0.00%",
+        },
+      ],
+    });
+    // prettier-ignore
+    expect(getEvaluatedGrid(model, "A6:D9")).toEqual(
+      [
+        ["",      "Price",  "Margin", "% Margin"],
+        ["Table", "1000",   "200",    "20.00%"],
+        ["Chair", "100",    "50",     "50.00%"],
+        ["Total", "1100",   "250",    "22.73%"],
+      ]
+    );
+  });
+
+  test("row header value is #N/A in formula in totals without aggregates", () => {
+    // prettier-ignore
+    const grid = {
+      A1: "Product", B1: "Color",
+      A2: "Table",   B2: "black",
+      A3: "Chair",   B3: "blue",
+      A5: "=PIVOT(1)"
+    };
+    const model = createModelFromGrid(grid);
+    const sheetId = model.getters.getActiveSheetId();
+    addPivot(model, "A1:B3", {
+      rows: [{ fieldName: "Product" }, { fieldName: "Color" }],
+      measures: [
+        {
+          id: "p",
+          fieldName: "p",
+          aggregator: "",
+          computedBy: { formula: "=Product", sheetId },
+        },
+        {
+          id: "c",
+          fieldName: "c",
+          aggregator: "",
+          computedBy: { formula: "=Color", sheetId },
+        },
+      ],
+    });
+    // prettier-ignore
+    expect(getEvaluatedGrid(model, "A6:C11")).toEqual(
+      [
+        ["",          "p",      "c",],
+        ["Table",     "Table",  "#N/A"],
+        ["    black", "Table",  "black"],
+        ["Chair",     "Chair",  "#N/A"],
+        ["    blue",  "Chair",  "blue"],
+        ["Total",     "#N/A",   "#N/A"],
+      ]
+    );
+  });
+
+  test("col header value is #N/A in formula in totals without aggregates", () => {
+    // prettier-ignore
+    const grid = {
+      A1: "Product", B1: "Color",
+      A2: "Table",   B2: "black",
+      A3: "Chair",   B3: "blue",
+      A5: "=PIVOT(1)"
+    };
+    const model = createModelFromGrid(grid);
+    const sheetId = model.getters.getActiveSheetId();
+    addPivot(model, "A1:B3", {
+      columns: [{ fieldName: "Product" }, { fieldName: "Color" }],
+      rows: [],
+      measures: [
+        {
+          id: "p",
+          fieldName: "p",
+          aggregator: "",
+          computedBy: { formula: "=Product", sheetId },
+        },
+        {
+          id: "c",
+          fieldName: "c",
+          aggregator: "",
+          computedBy: { formula: "=Color", sheetId },
+        },
+      ],
+    });
+    // prettier-ignore
+    expect(getEvaluatedGrid(model, "A5:G8")).toEqual(
+      [
+        ["(#1) Pivot",  "Table",  "",       "Chair",  "",     "",     ""],
+        ["",            "black",  "",       "blue",   "",     "Total",""],
+        ["",            "p",      "c",      "p",      "c",    "p",    "c"],
+        ["Total",       "Table",  "black",  "Chair",  "blue", "#N/A", "#N/A"],
       ]
     );
   });
@@ -948,16 +1065,21 @@ describe("Pivot calculated measure", () => {
       ],
     });
     expect(getEvaluatedCell(model, "A4").value).toEqual(42);
-    addColumns(model, "before", "A", 1);
+    addRows(model, "before", 2, 1);
     expect(model.getters.getPivotCoreDefinition("1").measures).toEqual([
       {
         id: "calculated",
         fieldName: "calculated",
         aggregator: "sum",
-        computedBy: { formula: "=B3", sheetId },
+        computedBy: { formula: "=A4", sheetId },
       },
     ]);
-    expect(getEvaluatedCell(model, "B4").value).toEqual(42);
+    expect(getEvaluatedCell(model, "A5").value).toEqual(42);
+
+    undo(model);
+    expect(getEvaluatedCell(model, "A4").value).toEqual(42);
+    redo(model);
+    expect(getEvaluatedCell(model, "A5").value).toEqual(42);
   });
 
   test("references becomes invalid when sheet is deleted", () => {
@@ -1032,5 +1154,37 @@ describe("Pivot calculated measure", () => {
 
     expect(getEvaluatedCell(model, "E2").value).toEqual(40);
     expect(getEvaluatedCell(model, "E3").value).toEqual(60);
+  });
+
+  test("formula with a domain not matching any data in the pivot", () => {
+    const grid = {
+      A1: "Customer",
+      B1: "Country",
+      C1: "Price",
+      A2: "Alice",
+      B2: "BE",
+      C2: "10",
+      A3: '=PIVOT.VALUE(1, "calculated", "Country", "BE", "Customer", "Bob")', // Missing Bob in BE
+      A4: '=PIVOT.VALUE(1, "calculated", "Country", "IN", "Customer", "Alice")', // Missing IN
+      A5: '=PIVOT.VALUE(1, "calculated", "Country", "IN", "Customer", "Bob")', // All missing
+      A6: '=PIVOT.VALUE(1, "calculated", "Country", "IN")', // aggregated value
+    };
+    const model = createModelFromGrid(grid);
+    const sheetId = model.getters.getActiveSheetId();
+    addPivot(model, "A1:C2", {
+      rows: [{ fieldName: "Country" }, { fieldName: "Customer" }],
+      measures: [
+        {
+          id: "calculated",
+          fieldName: "calculated",
+          aggregator: "sum",
+          computedBy: { formula: "='Country'&'Customer'", sheetId },
+        },
+      ],
+    });
+    expect(getEvaluatedCell(model, "A3").value).toEqual("BE");
+    expect(getEvaluatedCell(model, "A4").value).toEqual("");
+    expect(getEvaluatedCell(model, "A5").value).toEqual("");
+    expect(getEvaluatedCell(model, "A6").value).toEqual(0);
   });
 });

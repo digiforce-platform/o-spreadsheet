@@ -262,10 +262,7 @@ export class SpreadsheetPivot implements Pivot<SpreadsheetPivotRuntimeDefinition
     if (finalCell.value === null) {
       return { value: _t("(Undefined)") };
     }
-    return {
-      value: finalCell.value,
-      format: finalCell.format,
-    };
+    return finalCell;
   }
 
   getPivotCellValueAndFormat(measureId: string, domain: PivotDomain): FunctionResultObject {
@@ -374,9 +371,15 @@ export class SpreadsheetPivot implements Pivot<SpreadsheetPivotRuntimeDefinition
   }
 
   private filterDataEntriesFromDomainNode(dataEntries: DataEntries, domain: PivotNode) {
-    const { field, value } = domain;
+    const { field, value, type } = domain;
     const { nameWithGranularity } = this.getDimension(field);
-    return dataEntries.filter((entry) => entry[nameWithGranularity]?.value === value);
+    return dataEntries.filter((entry) => {
+      const cellValue = entry[nameWithGranularity]?.value;
+      if (type === "char") {
+        return String(cellValue) === String(value);
+      }
+      return cellValue === value;
+    });
   }
 
   private getDimension(nameWithGranularity: string): PivotDimension {
@@ -385,7 +388,9 @@ export class SpreadsheetPivot implements Pivot<SpreadsheetPivotRuntimeDefinition
 
   private getTypeFromZone(sheetId: UID, zone: Zone) {
     const cells = this.getters.getEvaluatedCellsInZone(sheetId, zone);
-    const nonEmptyCells = cells.filter((cell) => cell.type !== CellValueType.empty);
+    const nonEmptyCells = cells.filter(
+      (cell) => !(cell.type === CellValueType.empty || cell.value === "")
+    );
     if (nonEmptyCells.length === 0) {
       return "integer";
     }
@@ -485,11 +490,7 @@ export class SpreadsheetPivot implements Pivot<SpreadsheetPivotRuntimeDefinition
         if (cell.value === "") {
           entry[field.name] = { value: null, type: CellValueType.empty, formattedValue: "" };
         } else {
-          if (field.type === "char") {
-            entry[field.name] = { ...cell, value: cell.formattedValue || null };
-          } else {
-            entry[field.name] = cell;
-          }
+          entry[field.name] = cell;
         }
       }
       entry["__count"] = { value: 1, type: CellValueType.number, formattedValue: "1" };

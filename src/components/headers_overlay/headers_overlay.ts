@@ -23,7 +23,7 @@ import { ContextMenuType } from "../grid/grid";
 import { css, cssPropertiesToCss } from "../helpers/css";
 import { isCtrlKey } from "../helpers/dom_helpers";
 import { dragAndDropBeyondTheViewport, startDnd } from "../helpers/drag_and_drop";
-import { MergeErrorMessage } from "../translations_terms";
+import { MergeErrorMessage, TableHeaderMoveErrorMessage } from "../translations_terms";
 import { ComposerFocusStore } from "./../composer/composer_focus_store";
 
 // -----------------------------------------------------------------------------
@@ -152,7 +152,12 @@ abstract class AbstractResizer extends Component<ResizerProps, SpreadsheetChildE
   }
 
   onMouseMove(ev: MouseEvent) {
-    if (this.state.isResizing || this.state.isMoving || this.state.isSelecting) {
+    if (
+      this.env.model.getters.isReadonly() ||
+      this.state.isResizing ||
+      this.state.isMoving ||
+      this.state.isSelecting
+    ) {
       return;
     }
     this._computeHandleDisplay(ev);
@@ -208,6 +213,10 @@ abstract class AbstractResizer extends Component<ResizerProps, SpreadsheetChildE
     }
     const index = this._getElementIndex(this._getEvOffset(ev));
     if (index < 0) {
+      return;
+    }
+    if (this.env.model.getters.isReadonly()) {
+      this._selectElement(index, false);
       return;
     }
     if (this.state.waitingForMove === true) {
@@ -641,8 +650,13 @@ export class RowResizer extends AbstractResizer {
       elements,
       position: this.state.position,
     });
-    if (!result.isSuccessful && result.reasons.includes(CommandResult.WillRemoveExistingMerge)) {
-      this.env.raiseError(MergeErrorMessage);
+
+    if (!result.isSuccessful) {
+      if (result.reasons.includes(CommandResult.WillRemoveExistingMerge)) {
+        this.env.raiseError(MergeErrorMessage);
+      } else if (result.reasons.includes(CommandResult.CannotMoveTableHeader)) {
+        this.env.raiseError(TableHeaderMoveErrorMessage);
+      }
     }
   }
 

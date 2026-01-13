@@ -7,7 +7,7 @@ import { autoCompleteProviders } from "../../src/registries";
 import { Store } from "../../src/store_engine";
 import { ContentEditableHelper } from "../__mocks__/content_editable_helper";
 import { registerCleanup } from "../setup/jest.setup";
-import { selectCell } from "../test_helpers/commands_helpers";
+import { addDataValidation, selectCell } from "../test_helpers/commands_helpers";
 import {
   click,
   getElStyle,
@@ -382,6 +382,46 @@ describe("Functions autocomplete", () => {
   });
 });
 
+describe("Data validation autocomplete", () => {
+  beforeEach(async () => {
+    ({ model, fixture, parent } = await mountComposerWrapper());
+  });
+
+  test("should not display close button in autocomplete for data validation", async () => {
+    addDataValidation(model, "A1", "id", {
+      type: "isValueInList",
+      values: ["1", "2", "3"],
+      displayStyle: "arrow",
+    });
+    await typeInComposer("");
+    expect(fixture.querySelectorAll(".o-autocomplete-value")).toHaveLength(3);
+    expect(fixture.querySelector(".fa-times-circle")).toBeFalsy();
+  });
+
+  test("closing formula assistant should not affect data validation autocomplete visibility", async () => {
+    addDataValidation(model, "A1", "id", {
+      type: "isValueInList",
+      values: [" 1", "2", "3"],
+      displayStyle: "arrow",
+    });
+
+    await typeInComposer("=SU");
+    expect(fixture.querySelectorAll(".o-autocomplete-value")).toHaveLength(1);
+    expect(fixture.querySelector(".fa-times-circle")).toBeTruthy();
+
+    await click(fixture, ".fa-times-circle");
+    expect(fixture.querySelectorAll(".o-autocomplete-value")).toHaveLength(0);
+    expect(fixture.querySelector(".fa-times-circle")).toBeFalsy();
+
+    await keyDown({ key: "Escape" });
+    await typeInComposer("");
+
+    expect(fixture.querySelectorAll(".o-autocomplete-value")).toHaveLength(3);
+    expect(fixture.querySelector(".fa-times-circle")).toBeFalsy();
+    expect(fixture.querySelector(".fa-question-circle")).toBeFalsy();
+  });
+});
+
 describe("Autocomplete parenthesis", () => {
   beforeEach(async () => {
     ({ model, fixture, parent } = await mountComposerWrapper());
@@ -426,7 +466,6 @@ describe("Autocomplete parenthesis", () => {
   test("=S( + edit S with autocomplete does not add left parenthesis", async () => {
     await typeInComposer("=S(");
     // go behind the letter "S"
-    composerStore.stopComposerRangeSelection();
     composerStore.changeComposerCursorSelection(2, 2);
     await nextTick();
     // show autocomplete

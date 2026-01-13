@@ -480,6 +480,8 @@ export const specialWhiteSpaceRegexp = new RegExp(
 );
 const newLineRegexp = /(\r\n|\r)/g;
 
+export const whiteSpaceCharacters = specialWhiteSpaceSpecialCharacters.concat([" "]);
+
 /**
  * Replace all different newlines characters by \n
  */
@@ -518,14 +520,23 @@ export function memoize<T extends any[], U>(func: (...args: T) => U): (...args: 
   }[funcName];
 }
 
+/**
+ * Removes the specified indexes from the array.
+ * Sparse (empty) elements are transformed to undefined (unless their index is explicitly removed).
+ */
 export function removeIndexesFromArray<T>(array: readonly T[], indexes: number[]): T[] {
-  return array.filter((_, index) => !indexes.includes(index));
+  const toRemove = new Set(indexes);
+  const newArray: T[] = [];
+  for (let i = 0; i < array.length; i++) {
+    if (!toRemove.has(i)) {
+      newArray.push(array[i]);
+    }
+  }
+  return newArray;
 }
 
 export function insertItemsAtIndex<T>(array: readonly T[], items: T[], index: number): T[] {
-  const newArray = [...array];
-  newArray.splice(index, 0, ...items);
-  return newArray;
+  return array.slice(0, index).concat(items).concat(array.slice(index));
 }
 
 export function replaceItemAtIndex<T>(array: readonly T[], newItem: T, index: number): T[] {

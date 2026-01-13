@@ -1,7 +1,12 @@
 import { Model } from "../../src";
 import { DataValidationPanel } from "../../src/components/side_panel/data_validation/data_validation_panel";
 import { UID } from "../../src/types";
-import { addDataValidation, updateLocale } from "../test_helpers/commands_helpers";
+import {
+  activateSheet,
+  addDataValidation,
+  createSheet,
+  updateLocale,
+} from "../test_helpers/commands_helpers";
 import { FR_LOCALE } from "../test_helpers/constants";
 import { click, setInputValueAndTrigger, simulateClick } from "../test_helpers/dom_helper";
 import {
@@ -174,6 +179,43 @@ describe("data validation sidePanel component", () => {
     simulateClick(".o-dv-save");
 
     expect(model.getters.getDataValidationRules(sheetId)).toMatchObject([{ isBlocking: true }]);
+  });
+
+  test("Preserves rule order when editing and saving via data validation preview panel", async () => {
+    addDataValidation(model, "A1", "id1", { type: "isEqual", values: ["5"] });
+    addDataValidation(model, "A2", "id2", { type: "isEqual", values: ["10"] });
+
+    await nextTick();
+    expect(getDataValidationRules(model, sheetId)).toMatchObject([{ id: "id1" }, { id: "id2" }]);
+
+    await click(fixture.querySelector(".o-dv-preview")!);
+    await nextTick();
+    await simulateClick(fixture.querySelector(".o-dv-save")!);
+
+    expect(getDataValidationRules(model, sheetId)).toMatchObject([{ id: "id1" }, { id: "id2" }]);
+  });
+
+  test("DV stays on original sheet when range is selected from another sheet and saved", async () => {
+    createSheet(model, { sheetId: "sh2" });
+
+    await simulateClick(".o-dv-add");
+    await nextTick();
+    setInputValueAndTrigger(".o-selection-input input", "A1:A5");
+    await changeCriterionType("isValueInRange");
+
+    const rangeInput = fixture.querySelectorAll<HTMLInputElement>(".o-selection-input input")[1];
+    activateSheet(model, "sh2");
+    await setInputValueAndTrigger(rangeInput, "A1:A5");
+    await simulateClick(".o-dv-save");
+
+    expect(getDataValidationRules(model, sheetId)).toEqual([
+      {
+        id: expect.any(String),
+        criterion: { type: "isValueInRange", displayStyle: "arrow", values: ["A1:A5"] },
+        ranges: ["A1:A5"],
+      },
+    ]);
+    expect(getDataValidationRules(model, "sh2")).toHaveLength(0);
   });
 
   describe("Locale", () => {

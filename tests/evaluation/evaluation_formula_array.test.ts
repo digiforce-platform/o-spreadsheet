@@ -132,6 +132,14 @@ describe("evaluate formulas that return an array", () => {
     expect(getEvaluatedCell(model, "B1").value).toBe(42);
   });
 
+  test("Spreading relations are properly cleared upon cell content change", () => {
+    setCellContent(model, "A1", "=MUNIT(1)");
+    const positionA1 = model.getters.getActivePosition();
+    expect(model.getters.getArrayFormulaSpreadingOn(positionA1)).toBeDefined();
+    setCellContent(model, "A1", "42");
+    expect(model.getters.getArrayFormulaSpreadingOn(positionA1)).not.toBeDefined();
+  });
+
   describe("spread matrix with format", () => {
     test("can spread matrix of values with matrix of format", () => {
       functionRegistry.add("MATRIX.2.2", {
@@ -772,6 +780,27 @@ describe("evaluate formulas that return an array", () => {
       });
       // initially, cells are evaluated in this order: [sheet1!A1, sheet2!A1, sheet2!A4]
       expect(getEvaluatedCell(model, "A1").value).toBe(42);
+    });
+
+    test("array formula evaluated first invalidated by other", () => {
+      const model = new Model({
+        sheets: [
+          {
+            cells: {
+              A1: { content: "=B2:B3" }, // evaluated first
+              B1: { content: "=C1:C3" }, // invalidates A1
+              C1: { content: "1" },
+              C2: { content: "2" },
+              C3: { content: "3" },
+            },
+          },
+        ],
+      });
+      expect(getEvaluatedCell(model, "A1").value).toBe(2);
+      expect(getEvaluatedCell(model, "A2").value).toBe(3);
+      expect(getEvaluatedCell(model, "B1").value).toBe(1);
+      expect(getEvaluatedCell(model, "B2").value).toBe(2);
+      expect(getEvaluatedCell(model, "B3").value).toBe(3);
     });
   });
 

@@ -2,6 +2,7 @@ import { Token } from "../../formulas";
 import { astToFormula } from "../../formulas/parser";
 import { toScalar } from "../../functions/helper_matrices";
 import { toBoolean } from "../../functions/helpers";
+import { deepCopy } from "../../helpers";
 import {
   getFirstPivotFunction,
   getNumberOfPivotFunctions,
@@ -22,11 +23,12 @@ import {
   UID,
   UpdatePivotCommand,
   invalidateEvaluationCommands,
+  isMatrix,
 } from "../../types";
 import { Pivot } from "../../types/pivot_runtime";
 import { UIPlugin, UIPluginConfig } from "../ui_plugin";
 
-export const UNDO_REDO_PIVOT_COMMANDS = ["ADD_PIVOT", "UPDATE_PIVOT"];
+export const UNDO_REDO_PIVOT_COMMANDS = ["ADD_PIVOT", "UPDATE_PIVOT", "REMOVE_PIVOT"];
 
 function isPivotCommand(cmd: CoreCommand): cmd is AddPivotCommand | UpdatePivotCommand {
   return UNDO_REDO_PIVOT_COMMANDS.includes(cmd.type);
@@ -64,9 +66,7 @@ export class PivotUIPlugin extends UIPlugin {
   handle(cmd: Command) {
     if (invalidateEvaluationCommands.has(cmd.type)) {
       for (const pivotId of this.getters.getPivotIds()) {
-        if (!pivotRegistry.get(this.getters.getPivotCoreDefinition(pivotId).type).externalData) {
-          this.setupPivot(pivotId, { recreate: true });
-        }
+        this.setupPivot(pivotId, { recreate: true });
       }
     }
     switch (cmd.type) {
@@ -198,7 +198,7 @@ export class PivotUIPlugin extends UIPlugin {
     if (!result) {
       return EMPTY_PIVOT_CELL;
     }
-    const { functionName, args } = result;
+    let { functionName, args } = result;
     const formulaId = args[0];
     if (!formulaId) {
       return EMPTY_PIVOT_CELL;
@@ -231,6 +231,9 @@ export class PivotUIPlugin extends UIPlugin {
       return pivotCells[pivotCol][pivotRow];
     }
     try {
+      const offsetRow = position.row - mainPosition.row;
+      const offsetCol = position.col - mainPosition.col;
+      args = args.map((arg) => (isMatrix(arg) ? arg[offsetCol][offsetRow] : arg));
       if (functionName === "PIVOT.HEADER" && args.at(-2) === "measure") {
         const domain = pivot.parseArgsToPivotDomain(
           args.slice(1, -2).map((value) => ({ value } as FunctionResultObject))
@@ -298,7 +301,7 @@ export class PivotUIPlugin extends UIPlugin {
   }
 
   setupPivot(pivotId: UID, { recreate } = { recreate: false }) {
-    const definition = this.getters.getPivotCoreDefinition(pivotId);
+    const definition = deepCopy(this.getters.getPivotCoreDefinition(pivotId));
     if (!(pivotId in this.pivots)) {
       const Pivot = withPivotPresentationLayer(pivotRegistry.get(definition.type).ui);
       this.pivots[pivotId] = new Pivot(this.custom, { definition, getters: this.getters });

@@ -65,6 +65,15 @@ describe("Import xlsx data", () => {
     expect(cell?.content).toEqual("=SUM(A1)");
   });
 
+  test("Can import array formula correctly and spill ranges values skipped", () => {
+    const sheet = getWorkbookSheet("jestSheet", convertedData)!;
+
+    expect(sheet.cells["A30"]?.content).toEqual("=RANDARRAY(2, 2)");
+    expect(sheet.cells["B30"]?.content).toBeUndefined();
+    expect(sheet.cells["A31"]?.content).toBeUndefined();
+    expect(sheet.cells["B31"]?.content).toBeUndefined();
+  });
+
   test("Can import merge", () => {
     const testSheet = getWorkbookSheet("jestSheet", convertedData)!;
     expect(testSheet.merges).toEqual(["D1:E2"]);
@@ -318,6 +327,15 @@ describe("Import xlsx data", () => {
     expect(cf.rule.type).toEqual("CellIsRule");
     expect((cf.rule as CellIsRule).operator).toEqual(operator);
     expect((cf.rule as CellIsRule).values).toEqual(values);
+  });
+
+  test("Can import CF with formulas", () => {
+    const testSheet = getWorkbookSheet("jestCfs", convertedData)!;
+    const cf = getCFBeginningAt("B29", testSheet)!;
+
+    expect(cf.rule.type).toEqual("CellIsRule");
+    expect((cf.rule as CellIsRule).operator).toEqual("Between");
+    expect((cf.rule as CellIsRule).values).toEqual(["=$B$23", "=2+2"]);
   });
 
   test.each([

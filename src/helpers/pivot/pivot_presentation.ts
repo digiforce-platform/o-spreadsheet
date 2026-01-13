@@ -7,7 +7,6 @@ import {
   DimensionTree,
   FunctionResultObject,
   Getters,
-  InitPivotParams,
   PivotDomain,
   PivotMeasure,
   PivotMeasureDisplay,
@@ -66,13 +65,13 @@ export default function (PivotClass: PivotUIConstructor) {
       this.getters = params.getters;
     }
 
-    init(params?: InitPivotParams | undefined): void {
+    markAsDirtyForEvaluation(): void {
       this.cache = {};
       this.rankAsc = {};
       this.rankDesc = {};
       this.runningTotal = {};
       this.runningTotalInPercent = {};
-      super.init(params);
+      super.markAsDirtyForEvaluation?.();
     }
 
     getPivotCellValueAndFormat(measureName: string, domain: PivotDomain): FunctionResultObject {
@@ -106,7 +105,7 @@ export default function (PivotClass: PivotUIConstructor) {
         return { value: 0 };
       }
       const { columns, rows } = super.definition;
-      if (columns.length + rows.length !== domain.length) {
+      if (measure.aggregator && columns.length + rows.length !== domain.length) {
         const values = this.getValuesToAggregate(measure, domain);
         const aggregator = AGGREGATORS_FN[measure.aggregator];
         if (!aggregator) {
@@ -124,11 +123,17 @@ export default function (PivotClass: PivotUIConstructor) {
         if (columns.find((col) => col.nameWithGranularity === symbolName)) {
           const { colDomain } = domainToColRowDomain(this, domain);
           const symbolIndex = colDomain.findIndex((node) => node.field === symbolName);
+          if (symbolIndex === -1) {
+            return new NotAvailableError();
+          }
           return this.getPivotHeaderValueAndFormat(colDomain.slice(0, symbolIndex + 1));
         }
         if (rows.find((row) => row.nameWithGranularity === symbolName)) {
           const { rowDomain } = domainToColRowDomain(this, domain);
           const symbolIndex = rowDomain.findIndex((row) => row.field === symbolName);
+          if (symbolIndex === -1) {
+            return new NotAvailableError();
+          }
           return this.getPivotHeaderValueAndFormat(rowDomain.slice(0, symbolIndex + 1));
         }
         return this.getPivotCellValueAndFormat(symbolName, domain);
@@ -217,7 +222,7 @@ export default function (PivotClass: PivotUIConstructor) {
           return this.getSubTreeMatchingDomain(node.children, domain, domainLevel + 1);
         }
       }
-      return tree;
+      return [];
     }
 
     treeToLeafDomains(tree: DimensionTree, parentDomain: PivotDomain = []) {
