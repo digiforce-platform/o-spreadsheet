@@ -1,12 +1,20 @@
 {
   "name": "@odoo/o-spreadsheet",
-  "version": "19.0.16",
+  "version": "1.0.2",
+  "o-version": "19.0.16",
   "description": "A spreadsheet component",
   "type": "module",
-  "main": "dist/o-spreadsheet.cjs.js",
-  "browser": "dist/o-spreadsheet.iife.js",
-  "module": "dist/o-spreadsheet.esm.js",
-  "types": "dist/o-spreadsheet.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./templates": {
+      "import": "./dist/templates.ts"
+    }
+  },
+  "types": "dist/index.d.ts",
   "files": [
     "dist/*.js",
     "dist/*.d.ts",
@@ -14,7 +22,7 @@
     "dist/*.css"
   ],
   "scripts": {
-    "serve-static": "live-server --open=demo --watch=build/o_spreadsheet.iife.js,build/o_spreadsheet.xml,build/o_spreadsheet.css,main.css,demo",
+    "serve-static": "live-server --open=demo --watch=build/index.js,build/templates.xml,build/main.css,demo",
     "dev": "npm-run-all --print-label bundle:dev --parallel server serve-static watch",
     "server": "node tools/server/main.cjs",
     "build:js": "tsc --module es6 --incremental",
@@ -22,7 +30,7 @@
     "bundle:esm": "rollup -c -m -- --format esm",
     "bundle:xml": "node tools/bundle_xml/main.cjs",
     "bundle:dev": "npm-run-all build:js bundle:iife \"bundle:xml -- --outDir build\" && node tools/bundle_scss/main.cjs --out build",
-    "dist": "tsc --module es6 --declaration --declarationDir dist/types && rollup -c && npm run bundle:xml -- --outDir dist && node tools/bundle_scss/main.cjs --out dist",
+    "dist": "rm -rf dist && tsc --module es6 --declaration --declarationDir dist/types && rollup -c && npm run bundle:xml -- --outDir dist && node tools/bundle_scss/main.cjs --out dist && rm -rf dist/types",
     "monkey": "SPREADSHEET_MONKEY_COUNT=$npm_config_monkey_count jest 'tests/collaborative/collaborative_monkey_party.test.ts'",
     "test": "tsc --noEmit --project tsconfig.jest.json && jest",
     "test:watch": "jest --watch",

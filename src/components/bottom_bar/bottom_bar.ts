@@ -21,7 +21,7 @@ css/* scss */ `
   .o-spreadsheet-bottom-bar {
     background-color: ${BACKGROUND_GRAY_COLOR};
     padding-left: ${HEADER_WIDTH}px;
-    font-size: 15px;
+    font-size: 13px;
     border-top: 1px solid lightgrey;
 
     .o-sheet-item {
@@ -64,9 +64,9 @@ css/* scss */ `
         }
 
         .o-icon {
-          height: 18px;
-          width: 18px;
-          font-size: 18px;
+          height: 14px;
+          width: 14px;
+          font-size: 14px;
         }
       }
     }

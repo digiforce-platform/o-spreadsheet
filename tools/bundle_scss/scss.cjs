@@ -26,8 +26,8 @@ function createScssBundle(target) {
     }
     scssContentFiles.push(content);
   }
-  const scssBundlePath = path.resolve(target, "o_spreadsheet.scss");
-  const scssVariablesPath = path.resolve(target, "o_spreadsheet_variables.scss");
+  const scssBundlePath = path.resolve(target, "sheet.scss");
+  const scssVariablesPath = path.resolve(target, "sheet_variables.scss");
   const scssContent = scssContentFiles.join("\n");
   const scssVariables = fs.readFileSync(variablePath, "utf8");
   writeToFile(scssBundlePath, banner + scssContent);
@@ -38,10 +38,10 @@ function createScssBundle(target) {
   const { css } = sass.compileString(fullBundle, {
     loadPaths: ["."],
   });
-  writeToFile(path.resolve(target, "o_spreadsheet.css"), banner + css);
+  writeToFile(path.resolve(target, "sheet.css"), banner + css);
 
   const timeSpentSeconds = (Date.now() - start) / 1000;
-  console.log(`created ${target}/o_spreadsheet.css in ${timeSpentSeconds.toFixed(2)}s`);
+  console.log(`created ${target}/sheet.css in ${timeSpentSeconds.toFixed(2)}s`);
 }
 
 exports.createScssBundle = createScssBundle;

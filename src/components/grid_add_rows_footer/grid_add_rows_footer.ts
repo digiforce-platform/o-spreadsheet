@@ -10,7 +10,7 @@ css/* scss */ `
   .o-grid-add-rows {
     input.o-input {
       width: 60px;
-      height: 30px;
+      height: 26px;
     }
 
     .o-validation-error {

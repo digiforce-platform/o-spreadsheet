@@ -84,7 +84,7 @@ css/* scss */ `
   .o-spreadsheet {
     position: relative;
     display: grid;
-    font-size: 14px;
+    font-size: 13px;
 
     .text-muted {
       color: ${TEXT_BODY_MUTED} !important;
@@ -243,9 +243,9 @@ css/* scss */ `
   .o-button {
     border: 1px solid;
     border-radius: 4px;
-    font-weight: 500;
-    font-size: 14px;
-    min-height: 32px;
+    font-weight: 400;
+    font-size: 13px;
+    min-height: 24px;
     line-height: 16px;
     flex-grow: 1;
     background-color: ${BUTTON_BG};
@@ -308,7 +308,7 @@ css/* scss */ `
   .o-button-icon {
     cursor: pointer;
     color: ${TEXT_BODY_MUTED};
-    font-weight: 500;
+    font-weight: 400;
     &:hover,
     &:active {
       color: ${TEXT_BODY};

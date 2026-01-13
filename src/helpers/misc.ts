@@ -233,7 +233,7 @@ export function parseMarkdownLink(str: string): { url: string; label: string } {
   };
 }
 
-const O_SPREADSHEET_LINK_PREFIX = "o-spreadsheet://";
+const O_SPREADSHEET_LINK_PREFIX = "sheet://";
 
 export function isSheetUrl(url: string) {
   return url.startsWith(O_SPREADSHEET_LINK_PREFIX);

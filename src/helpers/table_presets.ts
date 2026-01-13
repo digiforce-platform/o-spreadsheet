@@ -63,7 +63,7 @@ const COLOR_SETS = {
   lightBlue: generateTableColorSet(_t("Light blue"), "#346B90"),
   red: generateTableColorSet(_t("Red"), "#C53628"),
   lightGreen: generateTableColorSet(_t("Light green"), "#748747"),
-  purple: generateTableColorSet(_t("Purple"), "#6C4E65"),
+  purple: generateTableColorSet(_t("Purple"), "#964c84"),
   gray: {
     name: _t("Gray"),
     coloredText: "#666666",
@@ -74,12 +74,13 @@ const COLOR_SETS = {
     highlight: "#A9A9A9",
   },
   orange: generateTableColorSet(_t("Orange"), "#C37034"),
+  blue: generateTableColorSet(_t("Blue"), "#374151"),
 };
 
 const DARK_COLOR_SETS = {
   black: COLOR_SETS.black,
   orangeBlue: { ...COLOR_SETS.lightBlue, highlight: COLOR_SETS.orange.highlight },
-  purpleGreen: { ...COLOR_SETS.lightGreen, highlight: COLOR_SETS.purple.highlight },
+  purpleGreen: { ...COLOR_SETS.lightGreen, highlight: COLOR_SETS.blue.highlight },
   redBlue: { ...COLOR_SETS.lightBlue, highlight: COLOR_SETS.red.highlight },
 };
 
@@ -286,7 +287,7 @@ export const TABLE_PRESETS: Record<string, TableStyle> = {
   TableStyleLight2: buildPreset("TableStyleLight2", lightColoredText, COLOR_SETS.lightBlue),
   TableStyleLight3: buildPreset("TableStyleLight3", lightColoredText, COLOR_SETS.red),
   TableStyleLight4: buildPreset("TableStyleLight4", lightColoredText, COLOR_SETS.lightGreen),
-  TableStyleLight5: buildPreset("TableStyleLight5", lightColoredText, COLOR_SETS.purple),
+  TableStyleLight5: buildPreset("TableStyleLight5", lightColoredText, COLOR_SETS.blue),
   TableStyleLight6: buildPreset("TableStyleLight6", lightColoredText, COLOR_SETS.gray),
   TableStyleLight7: buildPreset("TableStyleLight7", lightColoredText, COLOR_SETS.orange),
 
@@ -294,7 +295,7 @@ export const TABLE_PRESETS: Record<string, TableStyle> = {
   TableStyleLight9: buildPreset("TableStyleLight9", lightWithHeader, COLOR_SETS.lightBlue),
   TableStyleLight10: buildPreset("TableStyleLight10", lightWithHeader, COLOR_SETS.red),
   TableStyleLight11: buildPreset("TableStyleLight11", lightWithHeader, COLOR_SETS.lightGreen),
-  TableStyleLight12: buildPreset("TableStyleLight12", lightWithHeader, COLOR_SETS.purple),
+  TableStyleLight12: buildPreset("TableStyleLight12", lightWithHeader, COLOR_SETS.blue),
   TableStyleLight13: buildPreset("TableStyleLight13", lightWithHeader, COLOR_SETS.gray),
   TableStyleLight14: buildPreset("TableStyleLight14", lightWithHeader, COLOR_SETS.orange),
 
@@ -302,7 +303,7 @@ export const TABLE_PRESETS: Record<string, TableStyle> = {
   TableStyleLight16: buildPreset("TableStyleLight16", lightAllBorders, COLOR_SETS.lightBlue),
   TableStyleLight17: buildPreset("TableStyleLight17", lightAllBorders, COLOR_SETS.red),
   TableStyleLight18: buildPreset("TableStyleLight18", lightAllBorders, COLOR_SETS.lightGreen),
-  TableStyleLight19: buildPreset("TableStyleLight19", lightAllBorders, COLOR_SETS.purple),
+  TableStyleLight19: buildPreset("TableStyleLight19", lightAllBorders, COLOR_SETS.blue),
   TableStyleLight20: buildPreset("TableStyleLight20", lightAllBorders, COLOR_SETS.gray),
   TableStyleLight21: buildPreset("TableStyleLight21", lightAllBorders, COLOR_SETS.orange),
 
@@ -310,7 +311,7 @@ export const TABLE_PRESETS: Record<string, TableStyle> = {
   TableStyleMedium2: buildPreset("TableStyleMedium2", mediumBandedBorders, COLOR_SETS.lightBlue),
   TableStyleMedium3: buildPreset("TableStyleMedium3", mediumBandedBorders, COLOR_SETS.red),
   TableStyleMedium4: buildPreset("TableStyleMedium4", mediumBandedBorders, COLOR_SETS.lightGreen),
-  TableStyleMedium5: buildPreset("TableStyleMedium5", mediumBandedBorders, COLOR_SETS.purple),
+  TableStyleMedium5: buildPreset("TableStyleMedium5", mediumBandedBorders, COLOR_SETS.blue),
   TableStyleMedium6: buildPreset("TableStyleMedium6", mediumBandedBorders, COLOR_SETS.gray),
   TableStyleMedium7: buildPreset("TableStyleMedium7", mediumBandedBorders, COLOR_SETS.orange),
 
@@ -318,7 +319,7 @@ export const TABLE_PRESETS: Record<string, TableStyle> = {
   TableStyleMedium9: buildPreset("TableStyleMedium9", mediumWhiteBorders, COLOR_SETS.lightBlue),
   TableStyleMedium10: buildPreset("TableStyleMedium10", mediumWhiteBorders, COLOR_SETS.red),
   TableStyleMedium11: buildPreset("TableStyleMedium11", mediumWhiteBorders, COLOR_SETS.lightGreen),
-  TableStyleMedium12: buildPreset("TableStyleMedium12", mediumWhiteBorders, COLOR_SETS.purple),
+  TableStyleMedium12: buildPreset("TableStyleMedium12", mediumWhiteBorders, COLOR_SETS.blue),
   TableStyleMedium13: buildPreset("TableStyleMedium13", mediumWhiteBorders, COLOR_SETS.gray),
   TableStyleMedium14: buildPreset("TableStyleMedium14", mediumWhiteBorders, COLOR_SETS.orange),
 
@@ -330,7 +331,7 @@ export const TABLE_PRESETS: Record<string, TableStyle> = {
     mediumMinimalBorders,
     COLOR_SETS.lightGreen
   ),
-  TableStyleMedium19: buildPreset("TableStyleMedium19", mediumMinimalBorders, COLOR_SETS.purple),
+  TableStyleMedium19: buildPreset("TableStyleMedium19", mediumMinimalBorders, COLOR_SETS.blue),
   TableStyleMedium20: buildPreset("TableStyleMedium20", mediumMinimalBorders, COLOR_SETS.gray),
   TableStyleMedium21: buildPreset("TableStyleMedium21", mediumMinimalBorders, COLOR_SETS.orange),
 
@@ -338,7 +339,7 @@ export const TABLE_PRESETS: Record<string, TableStyle> = {
   TableStyleMedium23: buildPreset("TableStyleMedium23", mediumAllBorders, COLOR_SETS.lightBlue),
   TableStyleMedium24: buildPreset("TableStyleMedium24", mediumAllBorders, COLOR_SETS.red),
   TableStyleMedium25: buildPreset("TableStyleMedium25", mediumAllBorders, COLOR_SETS.lightGreen),
-  TableStyleMedium26: buildPreset("TableStyleMedium26", mediumAllBorders, COLOR_SETS.purple),
+  TableStyleMedium26: buildPreset("TableStyleMedium26", mediumAllBorders, COLOR_SETS.blue),
   TableStyleMedium27: buildPreset("TableStyleMedium27", mediumAllBorders, COLOR_SETS.gray),
   TableStyleMedium28: buildPreset("TableStyleMedium28", mediumAllBorders, COLOR_SETS.orange),
 
@@ -346,7 +347,7 @@ export const TABLE_PRESETS: Record<string, TableStyle> = {
   TableStyleDark2: buildPreset("TableStyleDark2", dark, COLOR_SETS.lightBlue),
   TableStyleDark3: buildPreset("TableStyleDark3", dark, COLOR_SETS.red),
   TableStyleDark4: buildPreset("TableStyleDark4", dark, COLOR_SETS.lightGreen),
-  TableStyleDark5: buildPreset("TableStyleDark5", dark, COLOR_SETS.purple),
+  TableStyleDark5: buildPreset("TableStyleDark5", dark, COLOR_SETS.blue),
   TableStyleDark6: buildPreset("TableStyleDark6", dark, COLOR_SETS.gray),
   TableStyleDark7: buildPreset("TableStyleDark7", dark, COLOR_SETS.orange),
 

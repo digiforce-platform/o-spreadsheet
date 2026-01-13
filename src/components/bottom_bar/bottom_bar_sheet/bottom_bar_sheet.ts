@@ -17,8 +17,8 @@ import { getBoundingRectAsPOJO } from "../../helpers/dom_helpers";
 
 css/* scss */ `
   .o-sheet {
-    padding: 0 15px;
-    padding-right: 10px;
+    padding: 0 10px;
+    padding-right: 8px;
     height: ${DESKTOP_BOTTOMBAR_HEIGHT}px;
     border-left: 1px solid #c1c1c1;
     border-right: 1px solid #c1c1c1;
@@ -58,7 +58,7 @@ css/* scss */ `
     .o-sheet-color {
       bottom: 0;
       left: 0;
-      height: 6px;
+      height: 3px;
       z-index: 1;
       width: calc(100% - 1px);
     }
